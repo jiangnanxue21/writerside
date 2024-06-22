@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Keymap id="instance_id">
+    <Action id="$Copy">
+        <Description>Copy</Description>
+        <Shortcut layout="primary_Windows">Ctrl+C</Shortcut>
+        <Shortcut layout="primary_macOS">⌘+C</Shortcut>
+    </Action>
+
+    <Action id="$ShowSettings">
+        <Description>Settings</Description>
+        <Shortcut layout="primary_Windows">Ctrl+Alt+S</Shortcut>
+        <Shortcut layout="primary_macOS">⌘+,</Shortcut>
+    </Action>
+</Keymap>

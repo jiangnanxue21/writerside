@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE instance-profile
+        SYSTEM "https://helpserver.labs.jb.gg/help/schemas/mvp/product-profile.dtd">
+
+<instance-profile id="hi"
+                  name="JavaDocForXue"
+                  start-page="Introduction.md">
+
+    <toc-element topic="Introduction.md"/>
+    <toc-element topic="JUC.md"/>
+    <toc-element topic="elasticsearch.md"/>
+    <toc-element topic="sql.md"/>
+    <toc-element topic="basic.md"/>
+    <toc-element topic="kafka.md"/>
+    <toc-element topic="数据结构.md"/>
+    <toc-element topic="分布式.md"/>
+    <toc-element topic="HBase.md"/>
+    <toc-element topic="redis.md"/>
+    <toc-element topic="hadoop.md"/>
+    <toc-element topic="springboot.md"/>
+    <toc-element topic="Spark.md"/>
+    <toc-element topic="netty.md"/>
+    <toc-element topic="一致性与共识.md"/>
+    <toc-element toc-title="中文文档">
+    </toc-element>
+    <toc-element topic="JVM.md"/>
+</instance-profile>
