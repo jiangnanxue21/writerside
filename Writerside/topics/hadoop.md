@@ -3,16 +3,19 @@
 ## 1. HDFS
 
 ### 1.1 GFS（The Google File System）
+
 GFS定了三个非常重要的设计原则，这三个原则带来了很多和传统的分布式系统研究大相径庭的设计决策。但是这三个原则又带来了大量工程上的实用性，使得GFS的设计思路后续被Hadoop这样的系统快速借鉴并予以实现
 
 ![GFS设计原则.png](GFS设计原则.png)
 
 #### 1.1.1 GFS读流程
+
 ![目录服务.png](目录服务.png)
 
 每个data会被切分成54M的block，三副本，存放到不同的chuck
 
 客户端去读取GFS里面的数据的时候，有以下三个步骤：
+
 1. 先去问master想要读取的数据在哪里。客户端会发出两部分信息，一个是文件名，另一个则是要读取哪一段数据，也就是读取文件的offset及length
 2. master拿到了这个请求之后，就会把这个chunk对应的所有副本所在的chunk server，告诉客户端
 3. 等客户端拿到chunk所在的chunk server信息后，客户端就可以直接去找其中任意的一个chunk server读取自己所要的数据
@@ -34,18 +37,22 @@ master节点的所有数据，保存在内存里才能跟得上几百个客户�
 
 Backup Master是**同步复制**的，而Shadow Master的数据，要到t_2时间点才会追上来
 
-在集群外部还有监控master的服务在运行。如果只是master的进程挂掉了，那么这个监控程序会立刻重启master。如果master所在的硬件或者硬盘出现损坏，那么监控程序就会在Backup Master里面找一个出来，变成新的master
+在集群外部还有监控master的服务在运行。如果只是master的进程挂掉了，那么这个监控程序会立刻重启master。如果master所在的硬件或者硬盘出现损坏，那么监控程序就会在Backup
+Master里面找一个出来，变成新的master
 
 - 快速恢复
 
   为了让集群中的其他chunk server以及客户端不感知变化，GFS通过一个Canonical Name指定master，而不是通过IP
 
 #### 1.1.3 异步复制
+
 从监控程序发现master节点故障、启动备份节点上的master进程、读取Checkpoints和操作日志，仍然是一个几秒级别乃至分钟级别的过程
 
-shadow master可以用于保障“读场景”，shadow Master不断同步master输入的写入，尽可能保持追上master的最新状态，而并不需要等到shadow Master也写入完成才返回成功
+shadow master可以用于保障“读场景”，shadow Master不断同步master输入的写入，尽可能保持追上master的最新状态，而并不需要等到shadow
+Master也写入完成才返回成功
 
 但是可能因为延时读到一些过时的master里面的信息，比如命名空间、文件名等这些元数据，只会发生在以下三个条件都满足的情况下：
+
 1. master挂掉了
 2. 挂掉的master或者 Backup Master上的Checkpoints和操作日志，还没有被影子Master同步完
 3. 要读取的内容，恰恰是在没有同步完的那部分操作上
@@ -55,13 +62,15 @@ shadow master可以用于保障“读场景”，shadow Master不断同步master
 - GFS写流程（2PC?）
   ![GFS写.png](GFS写.png)
 
-  1. 客户端会去问master要写入的数据，应该在哪些chunkserver上
-  2. 和读数据一样，master会告诉客户端所有的次副本（secondary replica）所在的chunkserver。这还不够，master还会告诉客户端哪个replica是主副本（primary replica），数据此时以它为准。
-  3. 拿到数据应该写到哪些chunkserver里之后，客户端会把要写的数据发给所有的replica。不过此时，chunkserver 拿到发过来的数据后还不会真的写下来，只会把数据放在一个LRU的缓冲区里
-  4. 等到所有次副本都接收完数据后，客户端就会发送一个写请求给到主副本。GFS面对的是几百个并发的客户端，所以主副本可能会收到很多个客户端的写入请求。主副本自己会给这些请求排一个顺序，确保所有的数据写入是有一个固定顺序的。接下来，主副本就开始按照这个顺序，把刚才LRU的缓冲区里的数据写到实际的chunk里去。
-  5. 主副本会把对应的写请求转发给所有的次副本，所有次副本会和主副本以同样的数据写入顺序，把数据写入到硬盘上
-  6. 次副本的数据写入完成之后，会回复主副本，我也把数据和你一样写完了
-  7. 主副本再去告诉客户端，这个数据写入成功了。而如果在任何一个副本写入数据的过程中出错了，这个出错都会告诉客户端，也就意味着这次写入其实失败了
+    1. 客户端会去问master要写入的数据，应该在哪些chunkserver上
+    2. 和读数据一样，master会告诉客户端所有的次副本（secondary
+       replica）所在的chunkserver。这还不够，master还会告诉客户端哪个replica是主副本（primary replica），数据此时以它为准。
+    3. 拿到数据应该写到哪些chunkserver里之后，客户端会把要写的数据发给所有的replica。不过此时，chunkserver
+       拿到发过来的数据后还不会真的写下来，只会把数据放在一个LRU的缓冲区里
+    4. 等到所有次副本都接收完数据后，客户端就会发送一个写请求给到主副本。GFS面对的是几百个并发的客户端，所以主副本可能会收到很多个客户端的写入请求。主副本自己会给这些请求排一个顺序，确保所有的数据写入是有一个固定顺序的。接下来，主副本就开始按照这个顺序，把刚才LRU的缓冲区里的数据写到实际的chunk里去。
+    5. 主副本会把对应的写请求转发给所有的次副本，所有次副本会和主副本以同样的数据写入顺序，把数据写入到硬盘上
+    6. 次副本的数据写入完成之后，会回复主副本，我也把数据和你一样写完了
+    7. 主副本再去告诉客户端，这个数据写入成功了。而如果在任何一个副本写入数据的过程中出错了，这个出错都会告诉客户端，也就意味着这次写入其实失败了
 
 - 分离控制流和数据流
 - 流水线式的网络数据传输
@@ -87,26 +96,30 @@ shadow master可以用于保障“读场景”，shadow Master不断同步master
 ![计算向数据移动.png](计算向数据移动.png)
 
 hdfs暴露数据的位置：
+
 1. 资源管理
 2. 任务调度
 
 角色： 这个是Hadoop 1.x维度的， 2.x开始由yarn替代
 
 JobTracker:
-  1. 资源管理
-  2. 任务调度
+
+1. 资源管理
+2. 任务调度
 
 TaskTracker:
+
 1. 任务管理
 2. 资源汇报
 
 Client：**很重要的角色**，会做计算向数据移动的准备
 
-1. 会根据每次的计算数据，向NameNode询问元数据，得到一个切片split的清单，map的数量就有了,split是逻辑的，block是物理的, block身上有(offset, locations),split和block是有映射关系，split包含偏移量以及对应的map任务应该移动到哪些节点(locations)
-  
-    | id      | file | offset | locations  |
-    |---------|------|--------|------------|
-    | split01 | A    | 0, 500 | n1, n3, n5 |
+1. 会根据每次的计算数据，向NameNode询问元数据，得到一个切片split的清单，map的数量就有了,split是逻辑的，block是物理的,
+   block身上有(offset, locations),split和block是有映射关系，split包含偏移量以及对应的map任务应该移动到哪些节点(locations)
+
+   | id      | file | offset | locations  |
+       |---------|------|--------|------------|
+   | split01 | A    | 0, 500 | n1, n3, n5 |
 
 2. 生成计算程序未来运行时的相关配置文件,...xml，比如堆大小等等
 3. 未来的移动应该相对可靠，client会将jar, split清单，配置xml上传到hdfs的目录中（上传的数据副本数是10，原因是map可能很多，需要向DataNode请求）
@@ -114,18 +127,20 @@ Client：**很重要的角色**，会做计算向数据移动的准备
 5. JobTracker会去做决定，哪个TaskTracker执行，是因为TaskTracker对JobTracker上报
 
 JobTracker收到启动程序之后：
+
 1. 从HDFS中取回split清单
 2. 根据自己收到的TaskTracker汇报的资源，最终确定每一个split对应的map应该去哪一个节点
 3. TaskTracker在心跳的时候会获取分配到自己的任务信息
 
 TaskTracker在心跳取回任务之后
+
 1. 从hdfs从下载jar，xml到本机
 2. 最终启动任务描述中的,MapTask/ReduceTask，最终代码在某一个节点被启动，是通过client上传，TaskTracker下载
 
-
 ## yarn
 
-yarn出现的原因：支持未来的框架复用资源管理; 因为各自实现资源管理，但是他们部署在同一批硬件上，因为隔离，所以不能感知对方的使用，造成**资源争抢**
+yarn出现的原因：支持未来的框架复用资源管理; 因为各自实现资源管理，但是他们部署在同一批硬件上，因为隔离，所以不能感知对方的使用，造成
+**资源争抢**
 
 ![yarn_run_job.png](yarn_run_job.png)
 
@@ -229,11 +244,14 @@ public class MyReducer extends Reducer<Text, IntWritable, Text, IntWritable>{
     }
 }
 ```
-提交方式
-1. 开发-> jar -> 上传到集群中的某一个节点 -> bin/hadoop jar /usr/joe/wordcount.jar org.myorg.WordCount /usr/joe/wordcount/input /usr/joe/wordcount/output
-2. 嵌入【linux，windows】（非hadoop jar）的集群方式  on yarn
 
-    集群：M、R
+提交方式
+
+1. 开发-> jar -> 上传到集群中的某一个节点 -> bin/hadoop jar /usr/joe/wordcount.jar org.myorg.WordCount
+   /usr/joe/wordcount/input /usr/joe/wordcount/output
+2. 嵌入【linux，windows】（非hadoop jar）的集群方式 on yarn
+
+   集群：M、R
     ```
     client -> RM -> AppMaster
     mapreduce.framework.name -> yarn   //决定了集群运行
@@ -245,6 +263,7 @@ public class MyReducer extends Reducer<Text, IntWritable, Text, IntWritable>{
 源码的分析: what？why？how？
 
 主要看3个毕竟重要的环节：
+
 1. 计算向数据移动
 2. 并行度、分治
 3. 数据本地化读取
@@ -254,6 +273,7 @@ public class MyReducer extends Reducer<Text, IntWritable, Text, IntWritable>{
 没有计算发生，但是很重要，因为支撑了计算向数据移动和计算的并行度
 
 对于一个MapReduce任务来说，除去开始的加载配置项，最后最后肯定会提交任务
+
 ```Java
 // MyWordCount.java
 // Submit the job, then poll for progress until the job is complete
@@ -298,6 +318,7 @@ public void submit()
     ......
 }
 ```
+
 submitJobInternal主要会做如下几个步骤（源码注释）:
 
 Internal method for submitting jobs to the system.
@@ -322,12 +343,14 @@ int maps = writeSplits(job, submitJobDir);
 // writeSplits
 List<InputSplit> splits = input.getSplits(job);
 ```
+
 TextInputFormat的继承结构
 ![inputFormat.png](inputFormat.png)
 
 MR框架默认的输入格式化类： TextInputFormat
 
 因为Job的父类是JobContextImpl
+
 ```Java
 public Class<? extends InputFormat<?,?>> getInputFormatClass() 
  throws ClassNotFoundException {
@@ -397,6 +420,7 @@ return array.length;
 ```
 
 hosts: Split所在的位置，支撑的计算向数据移动，可以选择Split所在的空闲hosts进行计算
+
 ```Java
 protected FileSplit makeSplit(Path file, long start, long length, 
                              String[] hosts, String[] inMemoryHosts) {
@@ -406,14 +430,14 @@ protected FileSplit makeSplit(Path file, long start, long length,
 
 ### MapTask
 
-
-
 我们自己只需要编写Map函数
+
 ```Java
 public class MyMapper extends Mapper<Object, Text, Text, IntWritable> {
 ```
 
 map函数是每条都会运行，而setup和cleanup只会运行一次
+
 ```Java
 public class Mapper<KEYIN, VALUEIN, KEYOUT, VALUEOUT> {
   public void run(Context context) throws IOException, InterruptedException {
@@ -507,7 +531,7 @@ void runNewMapper(final JobConf job,
     .....                       
 ```
 
-input ->  map  -> output
+input ->  map -> output
 
 input:(split+format) 通用的知识，未来的spark底层也是
 
@@ -527,10 +551,6 @@ init():
 	getCurrentKey():
 	getCurrentValue():
 ```
-
-
-
-
 
 		output：
 			NewOutputCollector
@@ -584,3 +604,13 @@ init():
 							SpillThread
 								sortAndSpill()
 									if (combinerRunner == null)
+
+
+
+1. 数据库访问业务数据，需要很短的时间返回结果，数据仓库不需要
+2. 数据仓库可以收纳不同数据源的东西
+3. 数据库可修改，数据仓库不能做修改，Mysql不能保存历史数据，Hive基本可以把历史数据保存下来，
+
+解释器，编译器，优化器
+
+Hive运行时，元数据存储在关系型数据库里

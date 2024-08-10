@@ -6,33 +6,35 @@
 
 1. 接口vs抽象类的区别？如何用普通的类模拟抽象类和接口？
 
-    从语法特性来说
-    
-    抽象类
-    
+   从语法特性来说
+
+   抽象类
+
     - 抽象类不允许被实例化，只能被继承。
-      - 抽象类可以包含属性和方法 
-      - 子类继承抽象类，必须实现抽象类中的所有抽象方法
-    
-    接口
-    
+        - 抽象类可以包含属性和方法
+        - 子类继承抽象类，必须实现抽象类中的所有抽象方法
+
+   接口
+
     - 接口不能包含属性（也就是成员变量）
-      - 接口只能声明方法，方法不能包含代码实现
-      - 类实现接口的时候，必须实现接口中声明的所有方法
-    
-    从设计的角度，相对于抽象类的 is-a关系来说，接口表示一种has-a关系，表示具有某些功能。对于接口，有一个更加形象的叫法，那就是协议（contract)
-    
-    应用场景
-    
-    如果要表示一种is-a的关系，并且是为了解决代码复用问题，我们就用抽象类；如果要表示一种has-a关系，并且是为了解决抽象而非代码复用问题，那我们就用接口
+        - 接口只能声明方法，方法不能包含代码实现
+        - 类实现接口的时候，必须实现接口中声明的所有方法
+
+   从设计的角度，相对于抽象类的
+   is-a关系来说，接口表示一种has-a关系，表示具有某些功能。对于接口，有一个更加形象的叫法，那就是协议（contract)
+
+   应用场景
+
+   如果要表示一种is-a的关系，并且是为了解决代码复用问题，我们就用抽象类；如果要表示一种has-a关系，并且是为了解决抽象而非代码复用问题，那我们就用接口
 
 2. 为什么基于接口而非实现编程？有必要为每个类都定义接口吗？
 
-    应用这条原则，可以**将接口和实现相分离，封装不稳定的实现，暴露稳定的接口**。上游系统面向接口而非实现编程，不依赖不稳定的实现细节，这样当实现发生变化的时候，上游系统的代码基本上不需要做改动，以此来降低耦合性，提高扩展性
-    
-    在设计接口的时候，要多思考一下，这样的接口设计是否足够通用，是否能够做到在替换具体的接口实现的时候，不需要任何接口定义的改动
-    
-    样例：
+   应用这条原则，可以**将接口和实现相分离，封装不稳定的实现，暴露稳定的接口**
+   。上游系统面向接口而非实现编程，不依赖不稳定的实现细节，这样当实现发生变化的时候，上游系统的代码基本上不需要做改动，以此来降低耦合性，提高扩展性
+
+   在设计接口的时候，要多思考一下，这样的接口设计是否足够通用，是否能够做到在替换具体的接口实现的时候，不需要任何接口定义的改动
+
+   样例：
     ```Java
     public class AliyunImageStore {
       //...省略属性、构造函数等...
@@ -57,11 +59,12 @@
     }
     }
     ```
-    
-    问题：
+
+   问题：
     1. AliyunImageStore 类中有些函数命名暴露了实现细节，比如，uploadToAliyun()
-    2. 将图片存储到阿里云的流程，跟存储到私有云的流程，可能并不是完全一致的。比如，阿里云的图片上传和下载的过程中，需要access token，而私有云不需要access token
-    
+    2. 将图片存储到阿里云的流程，跟存储到私有云的流程，可能并不是完全一致的。比如，阿里云的图片上传和下载的过程中，需要access
+       token，而私有云不需要access token
+
     ```Java
     // 函数的命名不能暴露任何实现细节
     public interface ImageStore {
@@ -117,14 +120,15 @@
     ```
 
 3. 为何说要多用组合少用继承？如何决定该用组合还是继承？
-   - 继承的问题
+    - 继承的问题
 
-   继承是面向对象的四大特性之一，用来表示类之间的 is-a 关系，可以解决代码复用的问题。虽然继承有诸多作用，但继承层次过深、过复杂，也会影响到代码的可维护性。在这种情况下，应该尽量少用，甚至不用继承
+   继承是面向对象的四大特性之一，用来表示类之间的 is-a
+   关系，可以解决代码复用的问题。虽然继承有诸多作用，但继承层次过深、过复杂，也会影响到代码的可维护性。在这种情况下，应该尽量少用，甚至不用继承
 
    举例：鸟 飞 叫，是否会飞？是否会叫？两个行为搭配起来会产生四种情况：会飞会叫、不会飞会叫、会飞不会叫、不会飞不会叫，如果用继承
    ![](extend1.png)
 
-   - 可以利用组合（composition）、接口、委托（delegation）三个技术手段，一块儿来解决刚刚继承存在的问题
+    - 可以利用组合（composition）、接口、委托（delegation）三个技术手段，一块儿来解决刚刚继承存在的问题
 
     ```Java
     public interface Flyable {
@@ -165,7 +169,7 @@ SOLID、KISS、YAGNI、DRY、LOD
 
 - 内聚
 
- 每个模块尽可能独立完成自己的功能，不依赖于模块外部的代码。
+每个模块尽可能独立完成自己的功能，不依赖于模块外部的代码。
 
 - 耦合
 
@@ -223,6 +227,7 @@ demo.demofunction(new SecurityTransporter(/*省略参数*/));
 demo.demofunction(xxx); // xxxx可以用Transporter或者SecurityTransporter替换
 
 - LSP和多态的区别？
+
 ```Java
 // 改造后：
 public class SecurityTransporter extends Transporter {
@@ -253,7 +258,7 @@ public class SecurityTransporter extends Transporter {
 
   松耦合，代码中，类与类之间的依赖关系简单清晰。即使两个类有依赖关系，一个类的代码改动不会或者很少导致依赖类的代码改动。依赖注入、接口隔离、基于接口而非实现编程
 
-  - 有哪些代码设计是明显违背迪米特法则的？对此又该如何重构？
+    - 有哪些代码设计是明显违背迪米特法则的？对此又该如何重构？
 
 ```Java
 public class NetworkTransporter {
@@ -307,45 +312,46 @@ public class Document {
    }
    ```
 
-   2. Document类 
-      - 构造函数中的 downloader.downloadHtml() 逻辑复杂，耗时长，不应该放到构造函数中，会影响代码的可测试性
-      - HtmlDownloader对象在构造函数中通过new来创建，违反了基于接口而非实现编程的设计思想
-      - Document网页文档没必要依赖HtmlDownloader类，违背了迪米特法则
-   
-      ```Java
-         public class Document {
-           private Html html;
-           private String url;
-        
-           public Document(String url, Html html) {
-             this.html = html;
-             this.url = url;
-           }
-           //...
-         }
-      
-         // 通过一个工厂方法来创建Document
-         public class DocumentFactory {
-           private HtmlDownloader downloader;
-        
-           public DocumentFactory(HtmlDownloader downloader) {
-             this.downloader = downloader;
-           }
-        
-           public Document createDocument(String url) {
-             Html html = downloader.downloadHtml(url);
-             return new Document(url, html);
-           }
-         }
-      ```
+2. Document类
+   - 构造函数中的 downloader.downloadHtml() 逻辑复杂，耗时长，不应该放到构造函数中，会影响代码的可测试性
+   - HtmlDownloader对象在构造函数中通过new来创建，违反了基于接口而非实现编程的设计思想
+   - Document网页文档没必要依赖HtmlDownloader类，违背了迪米特法则
 
-## Design Pattern  
+     ```Java
+        public class Document {
+          private Html html;
+          private String url;
+         
+          public Document(String url, Html html) {
+            this.html = html;
+            this.url = url;
+          }
+          //...
+        }
+       
+        // 通过一个工厂方法来创建Document
+        public class DocumentFactory {
+          private HtmlDownloader downloader;
+         
+          public DocumentFactory(HtmlDownloader downloader) {
+            this.downloader = downloader;
+          }
+         
+          public Document createDocument(String url) {
+            Html html = downloader.downloadHtml(url);
+            return new Document(url, html);
+          }
+        }
+     ```
+
+## Design Pattern
 
 ### 创建型
 
 主要解决对象的创建问题，封装复杂的创建过程，解耦对象的创建代码和使用代码
 
 #### 建造者模式
+
 1. 必填属性都放到构造函数中设置，那构造函数就又会出现参数列表很长的问题
 2. 如果类的属性之间有一定的依赖关系或者约束条件，我们继续使用构造函数配合set()方法的设计思路，那这些依赖关系或约束条件的校验逻辑就无处安放了
    ```Java
@@ -389,14 +395,14 @@ public class Document {
 
 3. 希望创建不可变对象,不能在类中暴露 set() 方法
 
-
 ### 行为型
 
 主要解决的就是“类或对象之间的交互”问题
 
 #### 职责链模式（常用）
 
-多个处理器（也就是刚刚定义中说的“接收对象”）依次处理同一个请求。一个请求先经过 A 处理器处理，然后再把请求传递给 B 处理器，B 处理器处理完后再传递给 C 处理器，以此类推，形成一个链条。链条上的每个处理器各自承担各自的处理职责，所以叫作职责链模式
+多个处理器（也就是刚刚定义中说的“接收对象”）依次处理同一个请求。一个请求先经过 A 处理器处理，然后再把请求传递给 B 处理器，B
+处理器处理完后再传递给 C 处理器，以此类推，形成一个链条。链条上的每个处理器各自承担各自的处理职责，所以叫作职责链模式
 
 #### 模板模式（常用）
 
@@ -458,16 +464,17 @@ public class Document {
 
 - 如何在遍历的同时安全地删除集合元素？
 
-  1. 通过Iterator的remove方法
-      迭代器类新增了一个lastRet成员变量，用来记录游标指向的前一个元素。通过迭代器去删除这个元素的时候，可以更新迭代器中的游标和lastRet值，来保证不会因为删除元素而导致某个元素遍历不到
-    ```Java
-    Iterator iterator = names.iterator();
-    iterator.next(); 
-    iterator.remove();
-    iterator.remove(); //报错，抛出IllegalStateException异常
-    ```
+    1. 通过Iterator的remove方法
   
-  2. removeIf
+       迭代器类新增了一个lastRet成员变量，用来记录游标指向的前一个元素。通过迭代器去删除这个元素的时候，可以更新迭代器中的游标和lastRet值，来保证不会因为删除元素而导致某个元素遍历不到
+       ```Java
+       Iterator iterator = names.iterator();
+       iterator.next(); 
+       iterator.remove();
+       iterator.remove(); //报错，抛出IllegalStateException异常
+       ```
+
+    2. removeIf
 
 ### 结构型
 
@@ -543,18 +550,21 @@ public class SevereNotification extends Notification {
 
 门面模式为子系统提供一组统一的接口，定义一组高层接口让子系统**更易用**
 
-假设有一个系统A，提供了a、b、c、d四个接口。系统B完成某个业务功能，需要调用A系统的a、b、d 接口。利用门面模式，我们提供一个包裹a、b、d 接口调用的门面接口 x，给系统 B 直接使用。
+假设有一个系统A，提供了a、b、c、d四个接口。系统B完成某个业务功能，需要调用A系统的a、b、d 接口。利用门面模式，我们提供一个包裹a、b、d
+接口调用的门面接口 x，给系统 B 直接使用。
 
 这个就很简单了，比如游戏的起始页接口，背后是猜你想搜和你可能还喜欢两个接口
 
-
 #### 装饰器模式
 
-Java IO 类库非常庞大和复杂，有几十个类，负责 IO 数据的读取和写入。如果对 Java IO 类做一下分类，我们可以从下面两个维度将它划分为四类:
+Java IO 类库非常庞大和复杂，有几十个类，负责 IO 数据的读取和写入。如果对 Java IO
+类做一下分类，我们可以从下面两个维度将它划分为四类:
 InputStream, OutputStream, Reader, Writer
 
-
-照继承的方式来实现的话，就需要再继续派生出 DataFileInputStream、DataPipedInputStream 等类。如果我们还需要既支持缓存、又支持按照基本类型读取数据的类，那就要再继续派生出 BufferedDataFileInputStream、BufferedDataPipedInputStream 等 n 多类。这还只是附加了两个增强功能，如果我们需要附加更多的增强功能，那就会导致组合爆炸，类继承结构变得无比复杂，代码既不好扩展，也不好维护
+照继承的方式来实现的话，就需要再继续派生出 DataFileInputStream、DataPipedInputStream
+等类。如果我们还需要既支持缓存、又支持按照基本类型读取数据的类，那就要再继续派生出
+BufferedDataFileInputStream、BufferedDataPipedInputStream 等 n
+多类。这还只是附加了两个增强功能，如果我们需要附加更多的增强功能，那就会导致组合爆炸，类继承结构变得无比复杂，代码既不好扩展，也不好维护
 
 装饰器模式就是简单的“用组合替代继承”，有两个比较特殊的地方:
 
@@ -638,8 +648,9 @@ System.out.println(i1 == i2); // true
 System.out.println(i3 == i4); // false
 ```
 
+在 IntegerCache 的代码实现中，当这个类被加载的时候，缓存的享元对象会被集中一次性创建好。毕竟整型值太多了，不可能预先创建好所有的整型值，只能选择缓存对于大部分应用来说最常用的整型值，也就是一个字节的大小（-128
+到127之间的数据）。
 
-在 IntegerCache 的代码实现中，当这个类被加载的时候，缓存的享元对象会被集中一次性创建好。毕竟整型值太多了，不可能预先创建好所有的整型值，只能选择缓存对于大部分应用来说最常用的整型值，也就是一个字节的大小（-128 到127之间的数据）。
 ```Java
 private static class IntegerCache {
     static final int low = -128;
@@ -678,22 +689,22 @@ private static class IntegerCache {
 
 ![juc.png](juc.png)
 
-
 ### 并发容器
-![](blockingQueue.png)
 
+![](blockingQueue.png)
 
 ## JVM
 
 ### 双亲委派
 
-1. 什么是双亲委派？ 
+1. 什么是双亲委派？
 
 
 2. 为什么需要双亲委派，不委派有什么问题？
     - 避免类的重复加载,当父加载器已经加载过某一个类时，子加载器就不会再重新加载这个类
-    - 沙箱安全机制: 自定义String类，但是在加载自定义String类的时候会率先使用引导类加载器加载，而引导类加载器在加载的过程中会先加载jdk自带的文件（rt.jar包中java\lang\String.class），报错信息说没有main方法，就是因为加载的是rt.jar包中的string类。这样可以保证对java核心源代码的保护，这就是沙箱安全机制
-   
+    - 沙箱安全机制:
+      自定义String类，但是在加载自定义String类的时候会率先使用引导类加载器加载，而引导类加载器在加载的过程中会先加载jdk自带的文件（rt.jar包中java\lang\String.class），报错信息说没有main方法，就是因为加载的是rt.jar包中的string类。这样可以保证对java核心源代码的保护，这就是沙箱安全机制
+
 
 3. "父加载器"和"子加载器"之间的关系是继承的吗？
 
@@ -757,13 +768,12 @@ private static class IntegerCache {
    ```
 
 
-5. 我能不能主动破坏这种双亲委派机制？怎么破坏？ 
-6. 为什么重写loadClass方法可以破坏双亲委派，这个方法和findClass（）、defineClass（）区别是什么？ 
-7. 说一说你知道的双亲委派被破坏的例子吧 
-8. 为什么JNDI、JDBC等需要破坏双亲委派？ 
+5. 我能不能主动破坏这种双亲委派机制？怎么破坏？
+6. 为什么重写loadClass方法可以破坏双亲委派，这个方法和findClass（）、defineClass（）区别是什么？
+7. 说一说你知道的双亲委派被破坏的例子吧
+8. 为什么JNDI、JDBC等需要破坏双亲委派？
 9. 为什么TOMCAT要破坏双亲委派？ 1
 10. 谈谈你对模块化技术的理解吧
-
 
 ## 字节码
 
