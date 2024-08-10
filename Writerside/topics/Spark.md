@@ -497,6 +497,141 @@ RDD的依赖关系如下：
 其中NarrowDependency的关系是1:1或者是n:1的
 ![RDD依赖关系.png](RDD依赖关系.png)
 
+## Spark算子
+
+Spark算子在有些情况下使用会有问题，比如mapPartitionsWithIndex和分区调优
+
+首先看从外关联sql查询场景，有三个代码的版本
+
+版本1: 每个元素调用一下connectDB方法，所以会不停的close
+```Scala
+ val data: RDD[Int] = sc.parallelize(1 to 10, 2)
+
+ println("------case 1--------------")
+ val connectDB: Unit = {
+   println("------conn--mysql----")
+   Thread.sleep(1000)
+ }
+
+ val t1 = System.currentTimeMillis()
+ val res01: RDD[String] = data.map(
+   (value: Int) => {
+     connectDB
+     println(s"-----select $value-----")
+     println("-----close--mysql------")
+     value + "selected"
+   }
+ )
+ ```
+```Text
+ output:
+    ------case 1--------------
+   ------conn--mysql----
+   -----select 1-----
+   -----close--mysql------
+   1selected
+   -----select 2-----
+   -----close--mysql------
+   2selected
+   -----select 3-----
+   -----close--mysql------
+   3selected
+```
+
+版本2：每个partition连接mysql，**有bug**
+```Scala
+ val t2 = System.currentTimeMillis()
+ val res02: RDD[String] = data.mapPartitionsWithIndex(
+   (index, piter) => {
+   //这么写是有问题的，spark就是一个pipeline，迭代器嵌套的模式
+     val lb = new ListBuffer[String]  
+     //数据不会再内存积压
+     println("------conn--mysql----")
+     Thread.sleep(1000)
+     while (piter.hasNext) {
+       val value: Int = piter.next()
+       println(s"---$index--select $value-----")
+       lb.+=(value + "selected")
+     }
+     println("-----close--mysql------")
+     lb.iterator
+   }
+ )
+ res02.foreach(println)
+ ```
+
+```Text
+ output:
+    -----case 2---------------
+   ------conn--mysql----
+   ---0--select 1-----
+   ---0--select 2-----
+   ---0--select 3-----
+   ---0--select 4-----
+   ---0--select 5-----
+   -----close--mysql------
+   1selected
+   2selected
+   3selected
+   4selected
+   5selected
+   ------conn--mysql----
+   ---1--select 6-----
+   ---1--select 7-----
+```
+
+这个问题在哪里呢？假如数据是1T，内存只有10G，则每条数据都会先放入ListBuffer，导致内存溢出
+![spark外联sql_v2.png](spark外联sql_v2.png)
+
+版本2：构造自己的一个迭代器
+```Scala
+val res03: RDD[String] = data.mapPartitionsWithIndex(
+   (pindex, piter) => {
+     new Iterator[String] {
+       println("------conn--mysql----")
+       Thread.sleep(1000)
+
+       override def hasNext: Boolean = if (!piter.hasNext) {
+         println(s"---$pindex---close--mysql"); false
+       } else true
+
+       override def next(): String = {
+         val value: Int = piter.next()
+         println(s"---$pindex--select $value-----")
+         value + "selected"
+       }
+     }
+   }
+ )
+ res03.foreach(println)
+```
+
+#### 分区优化
+
+repartition是通过shuffle将数据进行重分区，那如何选择分区数 // todo
+
+```Scala
+ val repartition: RDD[(Int, Int)] = data1.coalesce(3, shuffle = false)
+ val res: RDD[(Int, (Int, Int))] = repartition.mapPartitionsWithIndex(
+   (pi, pt) => {
+     pt.map(e => (pi, e))
+   }
+ )
+```
+为什么可以分区改变而不用shuffle?
+
+分布式情况下数据的移动方式：IO，shuffle
+- shuffle
+  需要计算，每条数据应该去哪里
+- IO
+  每条数据不区分对待，只是换个地方，窄依赖
+
+分区由多变少，可以是IO；反之，必须是shuffle
+
+如何理解data1.coalesce(3, shuffle = false)是窄依赖呢？
+
+如下图所示，RDD1中的P1和P2会结合向RDD2中的P1移动，即所谓的IO移动
+![coalesce.png](coalesce.png)
 
 ## 集群架构
 
