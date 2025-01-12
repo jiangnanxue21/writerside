@@ -205,7 +205,7 @@ send-queue(netstat -anp可以显示), 只要是空的，就一定会返回可以
 什么时候写？不是依赖send-queue是不是有空间
 1. 你准备好要写什么了，这是第一步
 2. 第二步你才关心send-queue是否有空间
-3. so，读 read 一开始就要注册，但是write依赖以上关系，什么时候用什么时候注册
+3. 读 read 一开始就要注册，但是write依赖以上关系，用的时候注册
 4. 如果一开始就注册了write的事件，进入死循环，一直调起
 
 ## Reactor反应器模式
@@ -221,6 +221,8 @@ for rapid development of **maintainable high performance protocol** servers & cl
 
 #### 前置知识
 
+- DirectByteBuffer
+
 操作系统想和JVM沟通，先从堆内存放到buffer
 
 下图是readBytes的原理图：
@@ -228,8 +230,7 @@ for rapid development of **maintainable high performance protocol** servers & cl
 
 在JVM内存中分配的空间为DirectByteBuffer，在堆内存中开辟的空间为HeapByteBuffer
 
-### 事件循环组
-![事件循环模型.png](事件循环模型.png)
+- Promise
 
 如何异步执行？
 1. Future接口
@@ -237,7 +238,18 @@ for rapid development of **maintainable high performance protocol** servers & cl
 
 Future弊端：总得调用方来获取再执行步骤，如何解决？
 
-使用观察者模式，当执行任务完成时，自动在执行线程回调callback ----》 Promise, 加了监听器
+Netty使用观察者模式，当执行任务完成时，自动在执行线程回调callback ----》 Promise, 加了监听器
+
+
+
+### 事件循环组
+![事件循环模型.png](事件循环模型.png)
+
+
+
+
+
+
 
 事件循环组的线程应该有哪些特性？
 1. 负载均衡

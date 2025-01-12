@@ -277,40 +277,6 @@ take方法的实现
  }
 ```
 
-# MapReduce
-
-![](mapreduce.png)
-
-Map:以一条记录为单位做映射
-
-Reduce:以一组为单位做计算
-
-## MapReduce在Hadoop中的工作机制
-
-- Client提交规划：支撑了计算向数据移动和并行度
-- MapTask
-- ReduceTask
-
-# 网络模型
-
-### BIO
-
-![](BIO.png)
-
-1. Socket创建文件描述符fd3
-2. Socket绑定fd3和网络端口号
-3. 监听
-4. 在accept处阻塞，一旦有链接则创建一个线程执行
-
-BIO的问题：如果客户端链接过大那么需要新建若干个线程去执行，每台服务器可以运行的线程数是有限的。那么多线程的上下文切换的消耗也是巨大的
-
-### NIO
-
-两种意思：JDK new IO/OS non-blocking
-
-[//]: # (![]&#40;NIO.png&#41;)
-
-NIO的问题： 每次都有无意义的系统调用 O(n)
 
 多路复用器的引入
 
