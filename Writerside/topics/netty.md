@@ -221,14 +221,57 @@ for rapid development of **maintainable high performance protocol** servers & cl
 
 #### 前置知识
 
-- DirectByteBuffer
+当我们需要读写文件的时候，就需要创建两个流对象
+![stream.png](stream.png)
 
-操作系统想和JVM沟通，先从堆内存放到buffer
+InputStream会将将文件的数据，逐个从磁盘放入到b字节数组；OutputStream同理
+```Java
+  public int read(byte[] b, int off, int len) throws IOException {
+        Objects.checkFromIndexSize(off, len, b.length);
+        if (len == 0) {
+            return 0;
+        }
+
+        int c = read();
+        if (c == -1) {
+            return -1;
+        }
+        b[off] = (byte)c;
+
+        int i = 1;
+        try {
+        // 将文件的数据，逐个从磁盘放入到b字节数组
+            for (; i < len ; i++) {
+                c = read();
+                if (c == -1) {
+                    break;
+                }
+                b[off + i] = (byte)c;
+            }
+        } catch (IOException ee) {
+        }
+        return i;
+    }
+
+```
+当然，也可以是BufferedInputStream，调用的是readBytes(byte[] b, int off, int len)
+
+这时，可以引入NIO模型，不需要再为了传输数据创建两个数据流，只需要在两个通讯对象之间，创建channel，将对象抽象为buffer，这时我们只需要双方在该channel
+通道传输buffer即可，数据放入buffer
+
+![nio模型.png](nio模型.png)
+
+- Buffer
+
+操作系统想和JVM沟通，先从堆内存放到DirectByteBuffer，再拷贝到OS内存
 
 下图是readBytes的原理图：
-![readBytes.png](readBytes.png)
+![readByte.png](readByte.png)
 
 在JVM内存中分配的空间为DirectByteBuffer，在堆内存中开辟的空间为HeapByteBuffer
+
+零拷贝：指的是在JVM内存这个上下文中，直接从DirectBuffer里面读/写，避免拷贝到堆内内存
+
 
 - Promise
 
@@ -243,13 +286,7 @@ Netty使用观察者模式，当执行任务完成时，自动在执行线程回
 
 
 ### 事件循环组
-![事件循环模型.png](事件循环模型.png)
-
-
-
-
-
-
+![事件循环组模型.png](事件循环组模型.png)
 
 事件循环组的线程应该有哪些特性？
 1. 负载均衡
