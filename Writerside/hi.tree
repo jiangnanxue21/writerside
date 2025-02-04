@@ -8,6 +8,8 @@
 
     <toc-element topic="Introduction.md"/>
     <toc-element topic="JUC.md"/>
+    <toc-element topic="Scala.md"/>
+    <toc-element topic="AI.md"/>
     <toc-element topic="elasticsearch.md"/>
     <toc-element topic="sql.md"/>
     <toc-element topic="basic.md"/>
@@ -22,6 +24,4 @@
     <toc-element topic="netty.md"/>
     <toc-element topic="时间序列.md"/>
     <toc-element topic="一致性与共识.md"/>
-    <toc-element toc-title="中文文档">
-    </toc-element>
 </instance-profile>
