@@ -1,4 +1,4 @@
-# JUC
+# JUC -- 3 week
 
 以面试题为主
 
@@ -142,7 +142,9 @@ public interface RunnableFuture<V> extends Runnable, Future<V> {
 ![future.png](future.png)
 
 Future是Runnable的代理对象，负责对执行体的观察..
-![future mothod.png](future mothod.png)
+<p>
+<img src="future mothod.png" alt="Alt text" width="550"/>
+</p>
 
 可知RunnableFuture又可以执行，又可以代理功能；具体的实现类是FutureTask
 
@@ -289,8 +291,9 @@ private static class QueueingFuture<V> extends FutureTask<Void> {
 - ThreadPoolExecutor：普通线程池类，包含最基本的一些线程池操作相关的方法实现
 
 设计原理
-![threadpool设计原理.png](threadpool设计原理.png)
-
+<p>
+<img src="threadpool设计原理.png" alt="Alt text" width="550"/>
+</p>
 
 ```Java
 public ThreadPoolExecutor(int corePoolSize,
@@ -749,3 +752,11 @@ private void setNextRunTime() {
             time = triggerTime(-p);
     }
 ```
+
+### AQS
+
+![juc.png](juc.png)
+
+### 并发容器
+
+![](blockingQueue.png)

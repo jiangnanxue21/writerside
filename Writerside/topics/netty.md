@@ -17,8 +17,9 @@
 按照同步的流程
 
 在accept和recv阶段会产生阻塞
-![网络同步.png](网络同步.png)
-
+<p>
+<img src="网络同步.png" alt="Alt text" width="550"/>
+</p>
 
 - BIO
 
@@ -58,7 +59,9 @@ while (true) {
 NIO慢在哪里：
 
 while循环中，每次都需要全量遍历，用户态内核切换才能实现
-![NIO示意.png](NIO示意.png)
+<p>
+<img src="NIO示意.png" alt="Alt text" width="550"/>
+</p>
 
 因此引入了多路复用器：select， poll， epoll
 
@@ -78,7 +81,9 @@ linux以及netty
 - select
 
 select有fd大小的限制，而poll没有，FD_SETSIZE(1024)
-    ![select.png](select.png)
+<p>
+<img src="select.png" alt="Alt text" width="550"/>
+</p>
     
 > 无论NIO,SELECT,POLL都是要遍历所有的IO，并且询问状态；
 > 只不过，NIO遍历的成本在用户态内核态切换，
@@ -222,7 +227,9 @@ for rapid development of **maintainable high performance protocol** servers & cl
 #### 前置知识
 
 当我们需要读写文件的时候，就需要创建两个流对象
-![stream.png](stream.png)
+<p>
+<img src="stream.png" alt="Alt text" width="550"/>
+</p>
 
 InputStream会将将文件的数据，逐个从磁盘放入到b字节数组；OutputStream同理
 ```Java
@@ -266,6 +273,7 @@ InputStream会将将文件的数据，逐个从磁盘放入到b字节数组；Ou
 操作系统想和JVM沟通，先从堆内存放到DirectByteBuffer，再拷贝到OS内存
 
 下图是readBytes的原理图：
+
 ![readByte.png](readByte.png)
 
 在JVM内存中分配的空间为DirectByteBuffer，在堆内存中开辟的空间为HeapByteBuffer

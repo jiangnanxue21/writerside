@@ -1,6 +1,4 @@
-# Scala and Java Future
-
-## Scala
+# Scala -- 3 week
 ### 1. 函数和闭包
 
 调用某个函数并传入需要的参数，实际是将这个函数应用到(apply to)这些入参：
@@ -231,7 +229,7 @@ scala的特质和Java的默认方法的不同在哪里?
   默认方法只能定义在接口中，且必须使用default关键字。Java不支持多重继承，
   但可以通过接口的默认方法来实现类似的功能，如果多个接口提供了相同方法的实现，Java要求在实现类中显式地解决冲突
 
-### 样例类和模式匹配
+### 3. 样例类和模式匹配
 样例类是Scala用来对对象进行模式匹配而并不需要大量的样板代码的方式;**最大的好处是支持模式匹配**
 
 ```Scala
@@ -262,6 +260,6 @@ case class BinOp(operator: String, left: Expr, right: Expr) extends Expr
      println(op.copy(operator = "-")) //BinOp(-,Num(1.0),Var(x))
     ```
 
-### 列表
+### 4. 列表
 
 Scala的列表类型是协变covariant的，意思是对于每一组类型S和T，如果S是T的子类型，List[S]就是List[T]的子类型

@@ -60,7 +60,10 @@ Master也写入完成才返回成功
 #### 1.1.4 减少网络带宽
 
 - GFS写流程（2PC?）
-  ![GFS写.png](GFS写.png)
+<div>
+    ![GFS写.png](GFS写.png)
+</div>
+  
 
     1. 客户端会去问master要写入的数据，应该在哪些chunkserver上
     2. 和读数据一样，master会告诉客户端所有的次副本（secondary
@@ -345,7 +348,9 @@ List<InputSplit> splits = input.getSplits(job);
 ```
 
 TextInputFormat的继承结构
-![inputFormat.png](inputFormat.png)
+<div>
+    ![inputFormat.png](inputFormat.png)
+</div>
 
 MR框架默认的输入格式化类： TextInputFormat
 

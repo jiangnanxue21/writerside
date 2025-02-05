@@ -126,7 +126,10 @@
    关系，可以解决代码复用的问题。虽然继承有诸多作用，但继承层次过深、过复杂，也会影响到代码的可维护性。在这种情况下，应该尽量少用，甚至不用继承
 
    举例：鸟 飞 叫，是否会飞？是否会叫？两个行为搭配起来会产生四种情况：会飞会叫、不会飞会叫、会飞不会叫、不会飞不会叫，如果用继承
-   ![](extend1.png)
+
+<p>
+<img src="extend1.png" alt="Alt text" width="850"/>
+</p>
 
     - 可以利用组合（composition）、接口、委托（delegation）三个技术手段，一块儿来解决刚刚继承存在的问题
 
@@ -291,58 +294,58 @@ public class Document {
 ```
 
 1. 作为一个底层网络通信类要尽可能通用，而不只是服务于下载HTML，所以，不应该直接依赖对象HtmlRequest。从这一点上讲，NetworkTransporter类的设计违背迪米特法则，依赖了不该有直接依赖关系的HtmlRequest类
-   ```Java
-   public class NetworkTransporter {
-       // 省略属性和其他方法...
-       public Byte[] send(String address, Byte[] data) {
-         //...
-       }
-   }
-   
-   public class HtmlDownloader { 
-      private NetworkTransporter transporter;//通过构造函数或IOC注入
-      
-      // HtmlDownloader这里也要有相应的修改
-      public Html downloadHtml(String url) {
-         HtmlRequest htmlRequest = new HtmlRequest(url);
-         Byte[] rawHtml = transporter.send(
-         htmlRequest.getAddress(), htmlRequest.getContent().getBytes());
-         return new Html(rawHtml);
-      }
-   }
-   ```
-
-2. Document类
-   - 构造函数中的 downloader.downloadHtml() 逻辑复杂，耗时长，不应该放到构造函数中，会影响代码的可测试性
-   - HtmlDownloader对象在构造函数中通过new来创建，违反了基于接口而非实现编程的设计思想
-   - Document网页文档没必要依赖HtmlDownloader类，违背了迪米特法则
-
-     ```Java
-        public class Document {
-          private Html html;
-          private String url;
-         
-          public Document(String url, Html html) {
-            this.html = html;
-            this.url = url;
-          }
+    ```Java
+    public class NetworkTransporter {
+        // 省略属性和其他方法...
+        public Byte[] send(String address, Byte[] data) {
           //...
         }
+    }
+    
+    public class HtmlDownloader { 
+       private NetworkTransporter transporter;//通过构造函数或IOC注入
        
-        // 通过一个工厂方法来创建Document
-        public class DocumentFactory {
-          private HtmlDownloader downloader;
-         
-          public DocumentFactory(HtmlDownloader downloader) {
-            this.downloader = downloader;
-          }
-         
-          public Document createDocument(String url) {
-            Html html = downloader.downloadHtml(url);
-            return new Document(url, html);
-          }
-        }
-     ```
+       // HtmlDownloader这里也要有相应的修改
+       public Html downloadHtml(String url) {
+          HtmlRequest htmlRequest = new HtmlRequest(url);
+          Byte[] rawHtml = transporter.send(
+          htmlRequest.getAddress(), htmlRequest.getContent().getBytes());
+          return new Html(rawHtml);
+       }
+    }
+    ```
+
+2. Document类
+    - 构造函数中的 downloader.downloadHtml() 逻辑复杂，耗时长，不应该放到构造函数中，会影响代码的可测试性
+    - HtmlDownloader对象在构造函数中通过new来创建，违反了基于接口而非实现编程的设计思想
+    - Document网页文档没必要依赖HtmlDownloader类，违背了迪米特法则
+
+      ```Java
+         public class Document {
+           private Html html;
+           private String url;
+          
+           public Document(String url, Html html) {
+             this.html = html;
+             this.url = url;
+           }
+           //...
+         }
+        
+         // 通过一个工厂方法来创建Document
+         public class DocumentFactory {
+           private HtmlDownloader downloader;
+          
+           public DocumentFactory(HtmlDownloader downloader) {
+             this.downloader = downloader;
+           }
+          
+           public Document createDocument(String url) {
+             Html html = downloader.downloadHtml(url);
+             return new Document(url, html);
+           }
+         }
+      ```
 
 ## Design Pattern
 
@@ -393,7 +396,7 @@ public class Document {
            .build();
    ```
 
-3. 希望创建不可变对象,不能在类中暴露 set() 方法
+3. 希望创建不可变对象,不能在类中暴露set()方法
 
 ### 行为型
 
@@ -465,7 +468,7 @@ public class Document {
 - 如何在遍历的同时安全地删除集合元素？
 
     1. 通过Iterator的remove方法
-  
+
        迭代器类新增了一个lastRet成员变量，用来记录游标指向的前一个元素。通过迭代器去删除这个元素的时候，可以更新迭代器中的游标和lastRet值，来保证不会因为删除元素而导致某个元素遍历不到
        ```Java
        Iterator iterator = names.iterator();
@@ -479,6 +482,8 @@ public class Document {
 ### 结构型
 
 主要总结了一些类或对象组合在一起的经典结构，这些经典的结构可以解决特定应用场景的问题
+
+#### 组合模式(略)
 
 #### 桥接模式
 
@@ -595,7 +600,6 @@ public class DataInputStream extends InputStream {
 - 装饰器类是对功能的增强，这也是装饰器模式应用场景的一个重要特点
 
 用法：
-
 ```Java
 InputStream in = new FileInputStream("/user/wangzheng/test.txt");
 InputStream bin = new BufferedInputStream(in);
@@ -648,8 +652,8 @@ System.out.println(i1 == i2); // true
 System.out.println(i3 == i4); // false
 ```
 
-在 IntegerCache 的代码实现中，当这个类被加载的时候，缓存的享元对象会被集中一次性创建好。毕竟整型值太多了，不可能预先创建好所有的整型值，只能选择缓存对于大部分应用来说最常用的整型值，也就是一个字节的大小（-128
-到127之间的数据）。
+在 IntegerCache 的代码实现中，当这个类被加载的时候，缓存的享元对象会被集中一次性创建好。毕竟整型值太多了，不可能预先创建好所有的整型值，
+只能选择缓存对于大部分应用来说最常用的整型值，也就是一个字节的大小（-128到127之间的数据）。
 
 ```Java
 private static class IntegerCache {
@@ -667,31 +671,21 @@ private static class IntegerCache {
                 // Maximum array size is Integer.MAX_VALUE
                 h = Math.min(i, Integer.MAX_VALUE - (-low) -1);
             } catch( NumberFormatException nfe) {
-                // If the property cannot be parsed into an int, ignore it.
             }
         }
         high = h;
-
         cache = new Integer[(high - low) + 1];
         int j = low;
         for(int k = 0; k < cache.length; k++)
             cache[k] = new Integer(j++);
     }
-
 }
 ```
 
 所以，对于i1 == i2，会从IntegerCache取值，拿到相同的值，而i3 == i4会创建新的值
 
-## JUC
 
-### AQS
 
-![juc.png](juc.png)
-
-### 并发容器
-
-![](blockingQueue.png)
 
 ## JVM
 
@@ -779,3 +773,5 @@ private static class IntegerCache {
 
 - 类文件结构有几个部分
 - 知道字节码吗？字节码都有哪些？Integer x = 5; int y = 5; 比较x == y 都经过哪些步骤
+
+## DDD

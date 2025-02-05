@@ -79,3 +79,30 @@ application. run(args)
 ## 1 注意力机制
 
 跨序列进行样本相关性计算的是经典的注意力机制（Attention），在一个序列内部对样本进行相关性计算的是自注意力机制（self-attention）。在Transformer架构中我们所使用的是自注意力机制
+
+### Encoder
+![encoder.png](encoder.png)
+
+Positional Encoding: self attention的时候，加上位置的资讯
+
+![block输出.png](block输出.png)
+
+### Decoder
+
+Autoregressive(AT)
+
+![AT.png](AT.png)
+
+self-attention -> Masked Self-attention
+
+![masked_self_atttention.png](masked_self_atttention.png)
+
+why masked? 因为token是一个个产生的，从左到右
+
+![transformer.png](transformer.png)
+
+#### cross attention
+
+![cross_attention.png](cross_attention.png)
+
+q来自于Decoder，K,V来自于Encoder
