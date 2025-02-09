@@ -1,8 +1,8 @@
 # Java Basic
 
-## 代码设计
+## 1. 代码设计
 
-### 面向对象
+### 1.1 面向对象
 
 1. 接口vs抽象类的区别？如何用普通的类模拟抽象类和接口？
 
@@ -158,13 +158,13 @@
     }
     ```
 
-### 设计原则
+### 1.2 设计原则
 
 每种设计原则给出概念，举一个例子
 
 SOLID、KISS、YAGNI、DRY、LOD
 
-#### 单一职责原则（SRP）
+#### 1.2.1 单一职责原则（SRP）
 
 一个类或者模块只负责完成一个职责（或者功能）
 
@@ -180,7 +180,39 @@ SOLID、KISS、YAGNI、DRY、LOD
 
 目的：使得模块的“可重用性”、“移植性“大大增强。
 
-#### 里式替换（LSP）
+#### 1.2.2 开闭原则
+
+23种经典设计模式中，大部分设计模式都是为了解决代码的扩展性问题而存在的，主要遵从的设计原则就是开闭原则
+
+主要描述为：添加一个新的功能应该是，在已有代码基础上扩展代码（新增模块、类、方法等），而非修改已有代码（修改模块、类、方法等）
+
+比如，我们代码中通过Kafka来发送异步消息。对于这样一个功能的开发，我们要学会将其抽象成一组跟具体消息队列（Kafka）无关的异步消息接口。所有上层系统都依赖这组抽象的接口编程，并且通过依赖注入的方式来调用。
+当我们要替换新的消息队列的时候，比如将 Kafka 替换成 RocketMQ，可以很方便地拔掉老的消息队列实现，插入新的消息队列实现
+下面的例子是通过多态、依赖注入、基于接口而非实现编程提高代码扩展性
+```Java
+// 这一部分体现了抽象意识
+public interface MessageQueue { //... }
+public class KafkaMessageQueue implements MessageQueue { //... }
+public class RocketMQMessageQueue implements MessageQueue {//...}
+
+public interface MessageFromatter { //... }
+public class JsonMessageFromatter implements MessageFromatter {//...}
+public class ProtoBufMessageFromatter implements MessageFromatter {//...}
+
+public class Demo {
+  private MessageQueue msgQueue; // 基于接口而非实现编程
+  public Demo(MessageQueue msgQueue) { // 依赖注入
+    this.msgQueue = msgQueue;
+  }
+  
+  // msgFormatter：多态、依赖注入
+  public void sendNotification(Notification notification, MessageFormatter msgFormatter) {
+    //...    
+  }
+}
+```
+
+#### 1.2.3 里式替换（LSP）
 
 子类对象能够替换程序中父类对象出现的**任何地方**，并且保证原来程序的逻辑行为不变及正确性不被破坏
 

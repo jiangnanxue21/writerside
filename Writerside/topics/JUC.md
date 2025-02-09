@@ -178,9 +178,7 @@ public <T> List<Future<T>> invokeAll(Collection<? extends Callable<T>> tasks)
 }
 ```
 
-invokeAny方法
-
-实际调用的是doInvokeAny；
+invokeAny方法实际调用的是doInvokeAny；
 1. 先会去执行第一个task，ecs.submit(it.next()) --> ExecutorCompletionService会调用, 包装的FutureTask，即QueueingFuture(f, completionQueue)
 2. 执行完成之后会调用done函数，放入到completionQueue里面
 3. 会尝试拿completionQueue队列的结果，如果为空，则执行其他task
@@ -219,7 +217,6 @@ private static class QueueingFuture<V> extends FutureTask<Void> {
     protected void done() { completionQueue.add(task); }
 }
 ```
-
 
 ```Java
     private <T> T doInvokeAny(Collection<? extends Callable<T>> tasks,

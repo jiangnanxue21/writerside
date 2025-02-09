@@ -29,8 +29,6 @@ increaseOne(i => i + 7)
 
 尾递归优化仅适用于某个方法或嵌套函数在最后一步操作中直接调用自己，并且没有经过函数值或其他中间环节的场合
 
-#### 尾递归
-
 第一版：
 ```
 object Padding :
@@ -218,6 +216,59 @@ class Cat extends Animal,Furry,FourLegged
 
 ![Cat的继承关系和线性化.png](Cat的继承关系和线性化.png)
 
+特质的线性化是这么来的：
+1. Animal必须包含，而Animal的父类是AnyRef和Any，故而
+    <code-block lang="plantuml">
+    <![CDATA[
+    @startmindmap
+    * Animal
+        * AnyRef
+            * Any
+    @endmindmap
+    ]]>
+    </code-block>
+
+2. Furry的父类是Animal，而任何已经在超类或首个混入中复制过的类都不再重复出现，则直接
+    <code-block lang="plantuml">
+    <![CDATA[
+    @startmindmap
+    * Furry
+        * Animal
+            * AnyRef
+                * Any
+    @endmindmap
+    ]]>
+    </code-block>
+
+3. FourLegged的父类是HasLegs，HasLegs的父类是Animal
+   <code-block lang="plantuml">
+    <![CDATA[
+    @startmindmap
+    * FourLegged
+        * HasLegs
+            * Furry
+                * Animal
+                    * AnyRef
+                        * Any
+    @endmindmap
+    ]]>
+    </code-block>
+
+4. 最后，cat的线性化是
+   <code-block lang="plantuml">
+    <![CDATA[
+    @startmindmap
+    * Cat
+        * FourLegged
+            * HasLegs
+                * Furry
+                    * Animal
+                        * AnyRef
+                            * Any
+    @endmindmap
+    ]]>
+    </code-block>
+
 scala的特质和Java的默认方法的不同在哪里?
 
 - Scala特质
@@ -259,6 +310,61 @@ case class BinOp(operator: String, left: Expr, right: Expr) extends Expr
     ```Scala
      println(op.copy(operator = "-")) //BinOp(-,Num(1.0),Var(x))
     ```
+
+```Scala
+// "+"和1: 常量模式 constant pattern
+// e: 变量模式（variable pattern）可以匹配任何值
+// _: 通配模式（wildcard pattern，即_）可匹配任何值
+def simplifyTop(expr: Expr): Expr =
+  expr match
+    case UnOp("-", UnOp("-", e)) => e // Double negation
+    case BinOp("+", e, Num(0)) => e // Adding zero
+    case BinOp("*", e, Num(1)) => e // Multiplying by one
+    // 如果没有一个模式匹配上，则会抛出名称为MatchError的异常。这意味着你需要确保所有的case被覆盖到，
+    // 哪怕这意味着你需要添加一个什么都不做的默认case
+    case _ => expr  
+```
+
+不同的模式种类：
+1. 通配模式
+    ```Scala
+    case _ => // 默认情况
+    ```
+2. 常量模式
+    ```Scala
+    case 5 => "five"
+    ```
+3. 变量模式
+   将对应的变量绑定成匹配上的对象。在绑定之后，就可以用这个变量对对象做进一步的处理
+   ```Scala
+    expr match
+     case 0 => "zero"
+     case somethingElse => s"not zero $somethingElse"
+    ```
+4. 构造方法模式
+   构造方法模式可以真正体现出模式匹配的威力
+   ```Scala
+    expr match
+     case BinOp("+", e, Num(0)) => "a deep match"
+     case _ => ""
+    ```
+5. 序列模式
+   匹配固定长度的序列模式
+   ```Scala
+    xs match
+     case List(0, _, _) => "found it"
+     case _ => ""
+    ```
+   匹配任意长度的序列模式
+   ```Scala
+    xs match
+     case List(0, _*) => "found it"
+     case _ => ""
+    ```
+6. 元组模式
+7. 带类型的模式
+
+
 
 ### 4. 列表
 
