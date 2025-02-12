@@ -75,10 +75,35 @@ application. run(args)
 
   “副总裁”左右熵都高，可以成词, “人工智”右熵低，不能成词
 
+## Transformer
 
-## 1 注意力机制
+### 注意力机制
 
-跨序列进行样本相关性计算的是经典的注意力机制（Attention），在一个序列内部对样本进行相关性计算的是自注意力机制（self-attention）。在Transformer架构中我们所使用的是自注意力机制
+跨序列进行样本相关性计算的是经典的**注意力机制（Attention）**，在一个序列内部对样本进行相关性计算的是**自注意力机制（self-attention）**。在Transformer架构中我们所使用的是自注意力机制
+
+向量的相关性可以由两个向量的点积来衡量，等于一个发出询问矩阵(Q),一个应答矩阵(K)；QK = 相关性
+
+在实际计算相关性的时候，一般不会直接使用原始特征矩阵并让它与转置矩阵相乘，**因为希望得到的是语义的相关性，而非单纯数字上的相关性**。因此在NLP中使用注意力机制的时候，**我们往往会先在原始特征矩阵的基础上乘以一个解读语义的$w$参数矩阵，以生成用于询问的矩阵Q、用于应答的矩阵K以及其他可能有用的矩阵**。
+
+### 自注意力机制
+
+transformer当中计算的相关性被称之为是**注意力分数**，该注意力分数是在原始的注意力机制上修改后而获得的全新计算方式，其具体计算公式如下
+
+![](https://skojiangdoc.oss-cn-beijing.aliyuncs.com/2023DL/transformer/image-12.png)
+
+```tex
+Attention(Q,K,V) = softmax(\frac{QK^{T}}{\sqrt{d_k}})V
+```
+
+Transformer为相关性矩阵设置了除以$\sqrt{d_k}$的标准化流程，$d_k$就是特征的维度, 经过Softmax归一化之后的分数，就是注意力机制求解出的**权重**
+
+### Multi-Head Attention 多头注意力机制
+
+在self-attention的基础上，对于输入的embedding矩阵，self-attention只使用了一组$W^Q,W^K,W^V$来进行变换得到Query，Keys，Values。而Multi-Head Attention使用多组$W^Q,W^K,W^V$得到多组Query，Keys，Values，
+然后每组分别计算得到一个Z矩阵，最后将得到的多个Z矩阵进行拼接。Transformer原论文里面是使用了8组不同的$W^Q,W^K,W^V$
+
+![](https://skojiangdoc.oss-cn-beijing.aliyuncs.com/2023DL/transformer/image-12.png)
+
 
 ### Encoder
 ![encoder.png](encoder.png)

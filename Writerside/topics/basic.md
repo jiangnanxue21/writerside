@@ -805,5 +805,3 @@ private static class IntegerCache {
 
 - 类文件结构有几个部分
 - 知道字节码吗？字节码都有哪些？Integer x = 5; int y = 5; 比较x == y 都经过哪些步骤
-
-## DDD

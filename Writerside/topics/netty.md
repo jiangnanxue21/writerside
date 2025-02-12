@@ -454,9 +454,8 @@ class DirectByteBuffer extends MappedByteBuffer implements DirectBuffer{
 ### 事件循环组
 ![事件循环组模型.png](事件循环组模型.png)
 
-#### Promise
+#### 如何异步执行？Promise
 
-**如何异步执行？**
 1. Future接口
 2. 通过Future接口获取任务执行结果即可
 
@@ -529,9 +528,14 @@ promise的两种用法，一种是直接包装返回
                 });
 ```
 
+### 事件循环组
 事件循环组的线程应该有哪些特性？
 1. 负载均衡
 2. 周期性调度的工作
+
+事件循环组集成图
+
+![事件循环组.png](事件循环组.png)
 
 ```Java
 // EventExecutor继承EventExecutorGroup，是一个特殊的组，next指向他自己
@@ -544,28 +548,53 @@ public interface EventExecutor extends EventExecutorGroup {
     EventExecutor next();
 ```
 
-EventExecutorGroup组里面有多个线程，形成循环
+EventExecutorGroup组里面有多个线程，通过next函数返回**一个(one of the EventExecutor)**，具有调度功能
+
 ```Java
 public interface EventExecutorGroup extends ScheduledExecutorService, Iterable<EventExecutor>
+
+/**
+     * Returns one of the {@link EventExecutor}s managed by this {@link EventExecutorGroup}.
+     */
+    EventExecutor next();
 ```
 
+EventLoopGroup，是一个循环组，它的next()代表了，选择的EventLoop会是一个循环的概念
+```Java
+/**
+ * Special {@link EventExecutorGroup} which allows registering {@link Channel}s that get
+ * processed for later selection during the event loop.
+ *
+ */
+public interface EventLoopGroup extends EventExecutorGroup {
+    /**
+     * Return the next {@link EventLoop} to use
+     */
+    @Override
+    EventLoop next();
+    
+   ChannelFuture register(Channel channel);
+```
+
+EventLoop是一个标志接口，代表了EventLoopGroup的一个EventLoop
 ```Java
 // EventLoop是一个线程，但也是一个特殊的循环组
 public interface EventLoop extends OrderedEventExecutor, EventLoopGroup
 ```
 
+**总结如下：**
 EventExecutorGroup继承自ScheduledExecutorService拥有了调度执行的功能，并且通过next()获取一个EventExecutor，EventExecutor是EventExecutorGroup里面专门执行事件的执行器，
 是一个特殊的EventExecutorGroup。引入EventLoopGroup，注册channel，而且把线程连起来，形成循环组；EventLoop是一个线程，但也是一个特殊的循环组
 
-
+MultithreadEventExecutorGroup: 上面继承图漏了AbstractEventExecutorGroup，结合上面图看
 ```Java
-// chooser选择children里面的EventExecutor
 public abstract class MultithreadEventExecutorGroup extends AbstractEventExecutorGroup {
-
     private final EventExecutor[] children;
     private final Set<EventExecutor> readonlyChildren;
     private final AtomicInteger terminatedChildren = new AtomicInteger();
     private final Promise<?> terminationFuture = new DefaultPromise(GlobalEventExecutor.INSTANCE);
+    
+    // chooser选择children里面的EventExecutor
     private final EventExecutorChooserFactory.EventExecutorChooser chooser;
     
     @Override
@@ -573,6 +602,39 @@ public abstract class MultithreadEventExecutorGroup extends AbstractEventExecuto
         return chooser.next();
     }
 
+// MultithreadEventExecutorGroup的构造方法
+// nThreads：创建几个线程
+// threadFactory：线程的构造方法
+// chooserFactory：选择器
+
+    protected MultithreadEventExecutorGroup(int nThreads, ThreadFactory threadFactory, Object... args) {
+        this(nThreads, threadFactory == null ? null : new ThreadPerTaskExecutor(threadFactory), args);
+    }
+
+    protected MultithreadEventExecutorGroup(int nThreads, Executor executor, Object... args) {
+        this(nThreads, executor, DefaultEventExecutorChooserFactory.INSTANCE, args);
+    }
+    
+      protected MultithreadEventExecutorGroup(int nThreads, Executor executor,
+                                            EventExecutorChooserFactory chooserFactory, Object... args) {
+        checkPositive(nThreads, "nThreads");
+
+        if (executor == null) {
+            executor = new ThreadPerTaskExecutor(newDefaultThreadFactory());
+        }
+        
+// 线程是如何构造的，很简单，直接new一个Thread
+public final class ThreadPerTaskExecutor implements Executor {
+    private final ThreadFactory threadFactory;
+
+    public ThreadPerTaskExecutor(ThreadFactory threadFactory) {
+        this.threadFactory = ObjectUtil.checkNotNull(threadFactory, "threadFactory");
+    }
+
+    @Override
+    public void execute(Runnable command) {
+        threadFactory.newThread(command).start();
+    }
 ```
 
 Chooser的实现
