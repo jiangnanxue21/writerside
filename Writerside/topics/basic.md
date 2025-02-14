@@ -515,6 +515,199 @@ public class Document {
 
 主要总结了一些类或对象组合在一起的经典结构，这些经典的结构可以解决特定应用场景的问题
 
+### 代理模式
+
+在不改变原始类（或叫被代理类）代码的情况下，通过引入代理类来给原始类附加功能
+
+```Java
+public interface IUserController {
+  UserVo login(String telephone, String password);
+}
+
+public class UserController implements IUserController {
+  //...省略其他属性和方法...
+
+  @Override
+  public UserVo login(String telephone, String password) {
+    //...省略login逻辑...
+    //...返回UserVo数据...
+  }
+}
+
+public class UserControllerProxy implements IUserController {
+  private MetricsCollector metricsCollector;
+  private UserController userController;
+
+  public UserControllerProxy(UserController userController) {
+    this.userController = userController;
+    this.metricsCollector = new MetricsCollector();
+  }
+
+  @Override
+  public UserVo login(String telephone, String password) {
+    long startTimestamp = System.currentTimeMillis();
+
+    // 委托
+    UserVo userVo = userController.login(telephone, password);
+
+    long endTimeStamp = System.currentTimeMillis();
+    long responseTime = endTimeStamp - startTimestamp;
+    RequestInfo requestInfo = new RequestInfo("login", responseTime, startTimestamp);
+    metricsCollector.recordRequest(requestInfo);
+
+    return userVo;
+  }
+}
+
+//UserControllerProxy使用举例
+//因为原始类和代理类实现相同的接口，是基于接口而非实现编程
+//将UserController类对象替换为UserControllerProxy类对象，不需要改动太多代码
+IUserController userController = new UserControllerProxy(new UserController());
+```
+动态代理主要有两种：
+1. 增强型代理：不改变原有的功能，增强的功能和核心功能无关，且具有通用性
+
+   AOP, 日志打印，声明式事务，监控
+
+2. 链接型代码：不改变产品属性，举例：外卖把东西送到
+   - RPC: 代理实现了协议处理，异常处理等一系列
+   - Mybatis Mapper映射：
+
+
+动态代理是为了解决如下的问题：
+1. 需要在代理类中，将原始类中的所有的方法，都重新实现一遍，并且为每个方法都附加相似的代码逻辑
+2. 如果要添加的附加功能的类有不止一个，需要针对每个类都创建一个代理类
+
+```Java
+public class MetricsCollectorProxy {
+  private MetricsCollector metricsCollector;
+
+  public MetricsCollectorProxy() {
+    this.metricsCollector = new MetricsCollector();
+  }
+
+  public Object createProxy(Object proxiedObject) {
+    Class<?>[] interfaces = proxiedObject.getClass().getInterfaces();
+    DynamicProxyHandler handler = new DynamicProxyHandler(proxiedObject);
+    return Proxy.newProxyInstance(proxiedObject.getClass().getClassLoader(), interfaces, handler);
+  }
+
+  private class DynamicProxyHandler implements InvocationHandler {
+    private Object proxiedObject;
+
+    public DynamicProxyHandler(Object proxiedObject) {
+      this.proxiedObject = proxiedObject;
+    }
+
+    // 会在代理对象的方法被调用时被触发
+    @Override
+    public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+      long startTimestamp = System.currentTimeMillis();
+      Object result = method.invoke(proxiedObject, args);
+      long endTimeStamp = System.currentTimeMillis();
+      long responseTime = endTimeStamp - startTimestamp;
+      String apiName = proxiedObject.getClass().getName() + ":" + method.getName();
+      RequestInfo requestInfo = new RequestInfo(apiName, responseTime, startTimestamp);
+      metricsCollector.recordRequest(requestInfo);
+      return result;
+    }
+  }
+}
+
+//MetricsCollectorProxy使用举例
+MetricsCollectorProxy proxy = new MetricsCollectorProxy();
+IUserController userController = (IUserController) proxy.createProxy(new UserController());
+```
+
+### Mybatis动态代理实现
+
+下列代码实现了数据插入的功能
+```Java
+try (SqlSession sqlSession = sqlSessionFactory.openSession()) {
+    BlobMapper blobMapper = sqlSession.getMapper(BlobMapper.class);
+
+    byte[] myblob = new byte[] {1, 2, 3, 4, 5};
+    BlobRecord blobRecord = new BlobRecord(1, myblob);
+    int rows = blobMapper.insert(blobRecord);
+    assertEquals(1, rows);
+}
+```
+
+而看insert方法，则只定义了接口，没有具体的实现，如何调用的
+```Java
+public interface BlobMapper {
+  int insert(BlobRecord blobRecord);
+
+  List<BlobRecord> selectAll();
+
+  List<BlobRecord> selectAllWithBlobObjects();
+}
+```
+
+```Java
+BlobMapper blobMapper = sqlSession.getMapper(BlobMapper.class);
+
+// 由代理工厂来创建的
+public <T> T getMapper(Class<T> type, SqlSession sqlSession) {
+  final MapperProxyFactory<T> mapperProxyFactory = (MapperProxyFactory<T>) knownMappers.get(type);
+  if (mapperProxyFactory == null) {
+    throw new BindingException("Type " + type + " is not known to the MapperRegistry.");
+  }
+  try {
+    return mapperProxyFactory.newInstance(sqlSession);
+  } catch (Exception e) {
+    throw new BindingException("Error getting mapper instance. Cause: " + e, e);
+  }
+}
+```
+
+下面是动态代理的核心代码了
+```Java
+protected T newInstance(MapperProxy<T> mapperProxy) {
+  return (T) Proxy.newProxyInstance(mapperInterface.getClassLoader(), new Class[] { mapperInterface }, mapperProxy);
+}
+
+public T newInstance(SqlSession sqlSession) {
+  final MapperProxy<T> mapperProxy = new MapperProxy<>(sqlSession, mapperInterface, methodCache);
+  return newInstance(mapperProxy);
+}
+```
+
+很明显，mapperProxy肯定是继承了InvocationHandler，最后会调用invoke方法
+```Java
+@Override
+public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+  try {
+    if (Object.class.equals(method.getDeclaringClass())) {
+      return method.invoke(this, args);
+    } else {
+      return cachedInvoker(method).invoke(proxy, method, args, sqlSession);
+    }
+  } catch (Throwable t) {
+    throw ExceptionUtil.unwrapThrowable(t);
+  }
+}
+```
+cachedInvoker(method)是方法映射，对应的是每个方法
+```Java
+public Object invoke(Object proxy, Method method, Object[] args, SqlSession sqlSession) throws Throwable {
+  return mapperMethod.execute(sqlSession, args);
+}
+
+.....
+
+public Object execute(SqlSession sqlSession, Object[] args) {
+  Object result;
+  switch (command.getType()) {
+    case INSERT: {
+      Object param = method.convertArgsToSqlCommandParam(args);
+      result = rowCountResult(sqlSession.insert(command.getName(), param));
+      break;
+    }
+```
+
+整个流程主要是为了将执行mapper方法封装在动态代理里面
+
 #### 组合模式(略)
 
 #### 桥接模式
