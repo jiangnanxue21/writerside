@@ -105,7 +105,43 @@ Transformer为相关性矩阵设置了除以$\sqrt{d_k}$的标准化流程，$d_
 ![](https://skojiangdoc.oss-cn-beijing.aliyuncs.com/2023DL/transformer/image-12.png)
 
 
+假设每个头的输出$Z_1$是一个维度为 (2,3) 的矩阵，如果我们有$h$个注意力头，那么最终的拼接操作会生成一个维度为 (2, 3h) 的矩阵。
+
+假设有两个注意力头的例子：
+
+头1的输出 $Z_1$：
+$$
+Z_1 = \begin{pmatrix}
+z_{11} & z_{12} & z_{13} \\
+z_{14} & z_{15} & z_{16}
+\end{pmatrix}
+$$
+
+头2的输出$Z_2$：
+$$
+Z_2 = \begin{pmatrix}
+z_{21} & z_{22} & z_{23} \\
+z_{24} & z_{25} & z_{26}
+\end{pmatrix}
+$$
+
+拼接操作：
+$$
+Z_{\text{concatenated}} = \begin{pmatrix}
+z_{11} & z_{12} & z_{13} & z_{21} & z_{22} & z_{23} \\
+z_{14} & z_{15} & z_{16} & z_{24} & z_{25} & z_{26}
+\end{pmatrix}
+$$
+
+具体流程如下：
+
+![多头注意力.png](多头注意力.png)
+
+
 ### Encoder
+
+<img src="https://skojiangdoc.oss-cn-beijing.aliyuncs.com/2023DL/transformer/image-1.png" alt="描述文字" width="400">
+
 ![encoder.png](encoder.png)
 
 Positional Encoding: self attention的时候，加上位置的资讯

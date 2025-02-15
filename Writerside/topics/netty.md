@@ -607,23 +607,26 @@ public abstract class MultithreadEventExecutorGroup extends AbstractEventExecuto
 // threadFactory：线程的构造方法
 // chooserFactory：选择器
 
-    protected MultithreadEventExecutorGroup(int nThreads, ThreadFactory threadFactory, Object... args) {
-        this(nThreads, threadFactory == null ? null : new ThreadPerTaskExecutor(threadFactory), args);
+protected MultithreadEventExecutorGroup(int nThreads, Executor executor,
+                                        EventExecutorChooserFactory chooserFactory, Object... args) {
+    checkPositive(nThreads, "nThreads");
+
+    if (executor == null) {
+        executor = new ThreadPerTaskExecutor(newDefaultThreadFactory());
     }
 
-    protected MultithreadEventExecutorGroup(int nThreads, Executor executor, Object... args) {
-        this(nThreads, executor, DefaultEventExecutorChooserFactory.INSTANCE, args);
-    }
-    
-      protected MultithreadEventExecutorGroup(int nThreads, Executor executor,
-                                            EventExecutorChooserFactory chooserFactory, Object... args) {
-        checkPositive(nThreads, "nThreads");
+    children = new EventExecutor[nThreads];
 
-        if (executor == null) {
-            executor = new ThreadPerTaskExecutor(newDefaultThreadFactory());
+    for (int i = 0; i < nThreads; i++) {
+        boolean success = false;
+        try {
+            children[i] = newChild(executor, args);
+            success = true;
         }
-        
-// 线程是如何构造的，很简单，直接new一个Thread
+```
+
+线程是如何构造的，很简单，直接new一个Thread
+```Java
 public final class ThreadPerTaskExecutor implements Executor {
     private final ThreadFactory threadFactory;
 
@@ -637,7 +640,92 @@ public final class ThreadPerTaskExecutor implements Executor {
     }
 ```
 
-Chooser的实现
+children数组包含的是EventExecutor的类型，由子类去实现；NioEventLoopGroup的实现里面，children存放的是NioEventLoop
+```Java
+`@Override
+protected EventLoop newChild(Executor executor, Object... args) throws Exception {
+    SelectorProvider selectorProvider = (SelectorProvider) args[0];
+    SelectStrategyFactory selectStrategyFactory = (SelectStrategyFactory) args[1];
+    RejectedExecutionHandler rejectedExecutionHandler = (RejectedExecutionHandler) args[2];
+    EventLoopTaskQueueFactory taskQueueFactory = null;
+    EventLoopTaskQueueFactory tailTaskQueueFactory = null;
+
+    int argsLength = args.length;
+    if (argsLength > 3) {
+        taskQueueFactory = (EventLoopTaskQueueFactory) args[3];
+    }
+    if (argsLength > 4) {
+        tailTaskQueueFactory = (EventLoopTaskQueueFactory) args[4];
+    }
+    return new NioEventLoop(this, executor, selectorProvider,
+            selectStrategyFactory.newSelectStrategy(),
+            rejectedExecutionHandler, taskQueueFactory, tailTaskQueueFactory);
+}`
+```
+
+Chooser的实现: DefaultEventExecutorChooserFactory.INSTANCE
+```Java
+`public EventExecutorChooser newChooser(EventExecutor[] executors) {
+    if (isPowerOfTwo(executors.length)) {
+        return new PowerOfTwoEventExecutorChooser(executors);
+    } else {
+        return new GenericEventExecutorChooser(executors);
+    }
+}`
+```
+对于2的指数使用PowerOfTwoEventExecutorChooser，否则直接取模操作
+```Java
+`public EventExecutor next() {
+    return executors[idx.getAndIncrement() & executors.length - 1];
+}`
+```
+
+Netty主方法的解释：
+1. channel的参数跟的是母亲的角色，她下面有很多的childHandler跟着SocketChannel的
+2. option参数是对NioServerSocketChannel生效的，而childOption是对SocketChannel生效的
+3. boss接受请求，是处理ServerSocket连接；而worker执行请求，从连接里面取出来的Socket对象
+
+```Java
+public static void main(String[] args) throws Exception {
+    // Configure SSL.
+    final SslContext sslCtx = ServerUtil.buildSslContext();
+
+    // Configure the server.
+    EventLoopGroup bossGroup = new NioEventLoopGroup(1);
+    EventLoopGroup workerGroup = new NioEventLoopGroup();
+    final EchoServerHandler serverHandler = new EchoServerHandler();
+    try {
+         // 启动类
+        ServerBootstrap b = new ServerBootstrap();
+        b.group(bossGroup, workerGroup)
+        // channel的参数跟的是母亲的角色，她下面有很多的childHandler跟着的SocketChannel类型
+         .channel(NioServerSocketChannel.class)
+         .option(ChannelOption.SO_BACKLOG, 100)
+         .handler(new LoggingHandler(LogLevel.INFO))
+         .childHandler(new ChannelInitializer<SocketChannel>() {
+             @Override
+             public void initChannel(SocketChannel ch) throws Exception {
+                 ChannelPipeline p = ch.pipeline();
+                 if (sslCtx != null) {
+                     p.addLast(sslCtx.newHandler(ch.alloc()));
+                 }
+                 //p.addLast(new LoggingHandler(LogLevel.INFO));
+                 p.addLast(serverHandler);
+             }
+         });
+
+        // Start the server.
+        ChannelFuture f = b.bind(PORT).sync();
+
+        // Wait until the server socket is closed.
+        f.channel().closeFuture().sync();
+    } finally {
+        // Shut down all event loops to terminate all threads.
+        bossGroup.shutdownGracefully();
+        workerGroup.shutdownGracefully();
+    }
+}
+```
 
 ### 内存管理系统
 

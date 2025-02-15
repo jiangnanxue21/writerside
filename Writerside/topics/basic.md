@@ -379,7 +379,7 @@ public class Document {
          }
       ```
 
-## Design Pattern
+## 2. Design Pattern
 
 ### 创建型
 
@@ -515,7 +515,7 @@ public class Document {
 
 主要总结了一些类或对象组合在一起的经典结构，这些经典的结构可以解决特定应用场景的问题
 
-### 代理模式
+#### 代理模式
 
 在不改变原始类（或叫被代理类）代码的情况下，通过引入代理类来给原始类附加功能
 
@@ -619,7 +619,7 @@ MetricsCollectorProxy proxy = new MetricsCollectorProxy();
 IUserController userController = (IUserController) proxy.createProxy(new UserController());
 ```
 
-### Mybatis动态代理实现
+Mybatis动态代理实现
 
 下列代码实现了数据插入的功能
 ```Java
@@ -910,9 +910,7 @@ private static class IntegerCache {
 所以，对于i1 == i2，会从IntegerCache取值，拿到相同的值，而i3 == i4会创建新的值
 
 
-
-
-## JVM
+## 3. JVM
 
 ### 双亲委派
 

@@ -72,8 +72,7 @@ private <T extends TransportRequest>
     final RequestHandlerRegistry<T> reg = requestHandlers.getHandler(action);
 ```
 
-那这些Handlers是哪里去注册的呢，主要是两个地方注册
-
+这些Handlers主要是两个地方注册:
 1. ActionModule->setupActions(..)方法 会向guice IOC框架提供一组需要实例化的Transport*Action的类型, 该类型比较特殊,都是继承自HandledTransportAction类型，该类型的构造方法会负责将本handler注册到这里
 2. 代码层使用TransportService->registerRequestHandler(...)方法强制向requestHandlers map中加入请求处理器
 
