@@ -98,7 +98,21 @@ https://baijiahao.baidu.com/s?id=1719816304849626834&wfr=spider&for=pc
 
 1. 生产者消息分区机制
 2. meta更新策略
+
+![client元数据更新.png](client元数据更新.png)
+
+
 3. 如何和broker建立连接
+
+wakeup()方法用于唤醒在select()或select(long)方法调用中被阻塞的线程。当selector上的channel无就绪事件时，如果想要唤醒阻塞在select()操作上的线程去处理一些别的工作，可以调用wakeup()方法
+
+![wakeup.png](wakeup.png)
+
+多路复用器获取的是**事件**而不是读取数据
+
+写事件不需要注册，数据准备好之后，再注册写事件，wakeup马上发送数据
+
+
 4. 内存管理和分配
 5. kafka的NIO模型
 
@@ -240,7 +254,6 @@ public boolean offer(E e) {
 ```
 
 take方法的实现
-
 ```Java
  public E take() throws InterruptedException {
      final ReentrantLock lock = this.lock;
@@ -278,10 +291,3 @@ take方法的实现
 ```
 
 
-多路复用器的引入
-
-1. 加入master节点的流程是什么？
-2. 如果本节点被选为master，接下去做什么
-3. 普通节点如何监控master健康状态
-4. master如何监控普通节点健康状态
-5. ES如何避免脑裂？它有哪些举措？

@@ -86,6 +86,14 @@ public MembershipAction(...) {
 ```
 ## 选举流程
 
+多路复用器的引入
+
+1. 加入master节点的流程是什么？
+2. 如果本节点被选为master，接下去做什么
+3. 普通节点如何监控master健康状态
+4. master如何监控普通节点健康状态
+5. ES如何避免脑裂？它有哪些举措？
+
 ES 7.0之前默认用的是内置的ZenDiscovery，在Node.java中启动
 ```Java
 discovery.start(); // start before cluster service so that it can set initial state on ClusterApplierService
