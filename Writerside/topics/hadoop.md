@@ -6,11 +6,11 @@
 
 GFS定了三个非常重要的设计原则，这三个原则带来了很多和传统的分布式系统研究大相径庭的设计决策。但是这三个原则又带来了大量工程上的实用性，使得GFS的设计思路后续被Hadoop这样的系统快速借鉴并予以实现
 
-![GFS设计原则.png](GFS设计原则.png)
+![GFS设计原则.png](../images/GFS设计原则.png)
 
 #### 1.1.1 GFS读流程
 
-![目录服务.png](目录服务.png)
+![目录服务.png](../images/目录服务.png)
 
 每个data会被切分成54M的block，三副本，存放到不同的chuck
 
@@ -33,7 +33,7 @@ master节点的所有数据，保存在内存里才能跟得上几百个客户�
 
   Backup Master + Shadow Master
 
-![master故障.png](master故障.png)
+![master故障.png](../images/master故障.png)
 
 Backup Master是**同步复制**的，而Shadow Master的数据，要到t_2时间点才会追上来
 
@@ -59,11 +59,8 @@ Master也写入完成才返回成功
 
 #### 1.1.4 减少网络带宽
 
-- GFS写流程（2PC?）
-<div>
-    ![GFS写.png](GFS写.png)
-</div>
-  
+- GFS写流程（2PC?） 
+![GFS写.png](../images/GFS写.png)
 
     1. 客户端会去问master要写入的数据，应该在哪些chunkserver上
     2. 和读数据一样，master会告诉客户端所有的次副本（secondary
@@ -348,9 +345,7 @@ List<InputSplit> splits = input.getSplits(job);
 ```
 
 TextInputFormat的继承结构
-<div>
-    ![inputFormat.png](inputFormat.png)
-</div>
+![inputFormat.png](inputFormat.png)
 
 MR框架默认的输入格式化类： TextInputFormat
 

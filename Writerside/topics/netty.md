@@ -727,6 +727,73 @@ public static void main(String[] args) throws Exception {
 }
 ```
 
+上面注册的pipeline会在哪里执行？
+
+bind方法下：
+```Java
+    final ChannelFuture initAndRegister() {
+        Channel channel = null;
+        try {
+            channel = channelFactory.newChannel();
+            init(channel);
+            
+// ServerBootstrap.java
+@Override
+void init(Channel channel) {
+ 
+
+    ChannelPipeline p = channel.pipeline();
+
+.....
+// todo 这个不是主线程执行的?
+    p.addLast(new ChannelInitializer<Channel>() {
+        @Override
+        public void initChannel(final Channel ch) {
+            final ChannelPipeline pipeline = ch.pipeline();
+            ChannelHandler handler = config.handler();
+            if (handler != null) {
+                pipeline.addLast(handler);
+            }
+
+            ch.eventLoop().execute(new Runnable() {
+                @Override
+                public void run() {
+                    pipeline.addLast(new ServerBootstrapAcceptor(
+                            ch, currentChildGroup, currentChildHandler, currentChildOptions, currentChildAttrs,
+                            extensions));
+                }
+            });
+        }
+    });
+```
+上面只是添加了ChannelInitializer，那真正是在哪里展开的呢？
+
+AbstractChannel.java
+```Java
+ private void register0(ChannelPromise promise) {
+        try {
+            // check if the channel is still open as it could be closed in the mean time when the register
+            // call was outside of the eventLoop
+            if (!promise.setUncancellable() || !ensureOpen(promise)) {
+                return;
+            }
+            boolean firstRegistration = neverRegistered;
+            doRegister();
+            neverRegistered = false;
+            registered = true;
+
+
+            // Ensure we call handlerAdded(...) before we actually notify the promise. This is needed as the
+            // user may already fire events through the pipeline in the ChannelFutureListener.
+            pipeline.invokeHandlerAddedIfNeeded();
+
+            safeSetSuccess(promise);
+            pipeline.fireChannelRegistered();
+```
+
+上面这段代码是观察者？是咋操作的啊
+
+
 ### 内存管理系统
 
 内存池设计

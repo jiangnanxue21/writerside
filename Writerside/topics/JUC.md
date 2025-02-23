@@ -57,7 +57,7 @@ await 不等于0的情况下，放到aqs挂起，等待唤醒
 
 ## Java线程与常用线程池体系
 
-![常用线程体系结构.png](常用线程体系结构.png)
+![常用线程体系结构.png](../images/常用线程体系结构.png)
 
 ### Executor
 线程池顶级接口
@@ -139,11 +139,11 @@ public interface RunnableFuture<V> extends Runnable, Future<V> {
     void run();
 }
 ```
-![future.png](future.png)
+![future.png](../images/future.png)
 
 Future是Runnable的代理对象，负责对执行体的观察..
 <p>
-<img src="future mothod.png" alt="Alt text" width="550"/>
+<img src="../images/future mothod.png" alt="Alt text" width="350"/>
 </p>
 
 可知RunnableFuture又可以执行，又可以代理功能；具体的实现类是FutureTask
@@ -289,7 +289,7 @@ private static class QueueingFuture<V> extends FutureTask<Void> {
 
 设计原理
 <p>
-<img src="threadpool设计原理.png" alt="Alt text" width="550"/>
+<img src="../images/threadpool设计原理.png" alt="Alt text" width="550"/>
 </p>
 
 ```Java
@@ -302,7 +302,7 @@ public ThreadPoolExecutor(int corePoolSize,
                               ThreadFactory threadFactory,
                               RejectedExecutionHandler handler) {
 ```
-![线程池.png](线程池.png)
+![线程池.png](../images/线程池.png)
 
 使用
 ```Java
@@ -683,7 +683,6 @@ public interface RunnableFuture<V> extends Runnable, Future<V> {
 // 组合了Future和Delayed，返回超时时间
 public interface ScheduledFuture<V> extends Delayed, Future<V> {
 }
-
 ```
 
 比较重要的是leader的使用
@@ -750,10 +749,248 @@ private void setNextRunTime() {
     }
 ```
 
+### CompletableFuture
+
+stage代表了一个异步执行的动作，而动作和动作之间可以用stage关联起来，有触发的先后顺序
+
+<p>
+<img src="../images/stage1.png" alt="stage1" width="500"/>
+</p>
+
+可以异步或者同步
+- 同步执行就是当前执行stage2的线程和stage1是同一个线程
+- 异步执行就是当前执行stage2的线程和stage1不是同一个线程
+
+CompletionStage接口：
+- 名字 () 同步执行动作；如thenRun
+- 名字Async () 异步执行动作，也即放入线程池中执行；如thenRunAsync
+
+<p>
+<img src="../images/stage2.png" alt="stage2" width="400"/>
+</p>
+
+A CompletableFuture may have dependent completion actions, collected in a linked stack
+
+
+![completableFuture方法示意.png](../images/completableFuture方法示意.png)
+
+上面的注释，有两段代码看原因
+```Java
+ CompletableFuture<Void>  completableFuture = CompletableFuture.runAsync(() -> {
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+            System.out.println();
+        });
+completableFuture.thenRun(() -> System.out.println(1));
+completableFuture.thenRun(() -> System.out.println(2));
+completableFuture.thenRun(() -> System.out.println(3));
+completableFuture.thenRun(() -> System.out.println(4));
+```
+output: 4, 3, 2, 1
+
+```Java
+CompletableFuture<Void>  completableFuture = CompletableFuture.runAsync(() -> {
+   System.out.println();
+});
+completableFuture.thenRun(() -> System.out.println(1));
+completableFuture.thenRun(() -> System.out.println(2));
+completableFuture.thenRun(() -> System.out.println(3));
+completableFuture.thenRun(() -> System.out.println(4));
+```
+output: 1, 2, 3, 4
+
+![completablefuture逻辑.png](../images/completablefuture逻辑.png)
+
+为什么不直接把runnable放到asyncPool，没有结果，需要包装
+
+```Java
+ public static CompletableFuture<Void> runAsync(Runnable runnable) {
+     return asyncRunStage(asyncPool, runnable);
+ }
+```
+
+```Java
+ static CompletableFuture<Void> asyncRunStage(Executor e, Runnable f) {
+     if (f == null) throw new NullPointerException();
+     CompletableFuture<Void> d = new CompletableFuture<Void>();
+     e.execute(new AsyncRun(d, f));
+     return d;
+ }
+```
+AsyncRun是一个包装对象。执行f，回调d
+
+```Java
+volatile Object result; 
+volatile Completion stack;
+
+    static final class AsyncRun extends ForkJoinTask<Void>
+            implements Runnable, AsynchronousCompletionTask {
+        CompletableFuture<Void> dep; Runnable fn;
+        AsyncRun(CompletableFuture<Void> dep, Runnable fn) {
+            this.dep = dep; this.fn = fn;
+        }
+
+        public final Void getRawResult() { return null; }
+        public final void setRawResult(Void v) {}
+        public final boolean exec() { run(); return true; }
+
+        public void run() {
+            CompletableFuture<Void> d; Runnable f;
+            if ((d = dep) != null && (f = fn) != null) {
+            // help gc
+                dep = null; fn = null;
+                // 代表d没有被执行过，只能执行一次f
+                if (d.result == null) {
+                    try {
+                        f.run();
+                        // 占位
+                        d.completeNull();
+                    } catch (Throwable ex) {
+                        d.completeThrowable(ex);
+                    }
+                }
+                d.postComplete();
+            }
+        }
+    }
+```
+为什么需要继承ForkJoinTask和Runnable？ 因为可能会把放到不是ForkJoin的线程池
+
+```Java
+ `final void postComplete() {
+     CompletableFuture<?> f = this; Completion h;
+     while ((h = f.stack) != null ||
+            (f != this && (h = (f = this).stack) != null)) {
+         CompletableFuture<?> d; Completion t;
+         if (f.casStack(h, t = h.next)) {
+             if (t != null) {
+                 if (f != this) {
+                     pushStack(h);
+                     continue;
+                 }
+                 h.next = null;    // detach
+             }
+             f = (d = h.tryFire(NESTED)) == null ? this : d;
+         }
+     }
+ }`
+```
+
+
+thenRun方法
+```Java
+public CompletableFuture<Void> thenRun(Runnable action) {
+     return uniRunStage(null, action);
+ }
+ 
+// e是线程池，f就是线程执行体
+private CompletableFuture<Void> uniRunStage(Executor e, Runnable f) {
+    if (f == null) throw new NullPointerException();
+    
+    // 新的stage
+    CompletableFuture<Void> d = new CompletableFuture<Void>();
+    // 如果e不等于空，也即线程池不为空，那么表明需要异步执行，这时包装UniRun中
+    if (e != null || !d.uniRun(this, f, null)) {
+        UniRun<T> c = new UniRun<T>(e, d, this, f);
+        // 将其压入当前CompletableFuture Completion栈中
+        this.push(c);
+        // 由于压入可能失败，这是由于当前CompletableFuture已经执行完成了，那么需要补救一下
+        c.tryFire(SYNC);
+    }
+    return d;
+}
+```
+
+```Java
+final void push(UniCompletion<?, ?> c) {
+    if (c != null) {
+        // 由于循环CAS压入Completion栈中的条件必须为"当前stage结果为null,也即未完成状态"
+        while (result == null && !tryPushStack(c))
+            lazySetNext(c, null); // clear on failure
+    }
+}
+```
+
+```Java
+final boolean uniRun(CompletableFuture<?> a, Runnable f, UniRun<?> c) {
+    Object r; Throwable x;
+    // 如果a未完成，那么返回false，由外部压入依赖Completion栈中
+    if (a == null || (r = a.result) == null || f == null)
+        return false;
+    // 到这里，那么a已经完成。当前stage未完成，也即保证只调用一次
+    if (result == null) {
+        // 如果依赖的a stage出现执行异常，那么completeThrowable
+        if (r instanceof AltResult && (x = ((AltResult)r).ex) != null)
+            completeThrowable(x, r);
+        else {
+            // 正常完成
+            try {
+                if (c != null && !c.claim())
+                    return false;
+                // 直接执行f，然后完成当前stage
+                f.run();
+                completeNull();
+            } catch (Throwable ex) {
+                completeThrowable(ex);
+            }
+        }
+    }
+    return true;
+}
+```
+```Java
+abstract static class UniCompletion<T, V> extends Completion {
+    Executor executor;       // 执行使用的线程池
+    CompletableFuture<V> dep; // 依赖完成的stage
+    CompletableFuture<T> src; // 动作源
+
+    UniCompletion(Executor executor, CompletableFuture<V> dep,
+                   CompletableFuture<T> src) {
+        this.executor = executor; this.dep = dep; this.src = src;
+    }
+
+    // 判断当前completion是否可以被执行
+    final boolean claim() {
+        Executor e = executor;
+        // 通过ForkJoinTask的Tag标记位从0->1，这时将当前completion放入线程池中执行并返回true
+        if (compareAndSetForkJoinTaskTag((short) 0, (short) 1)) {
+            if (e == null)
+                return true;
+            executor = null; // 解除线程池的引用 帮助GC
+            e.execute(this);
+        }
+        return false;
+    }
+}
+```
+
+```Java
+abstract static class Completion extends ForkJoinTask<Void>
+implements Runnable, AsynchronousCompletionTask {
+    volatile Completion next;  // 指向栈中下一个Completion
+
+    // 执行动作并返回所需要传播执行完成的stage，SYNC同步执行，ASYNC异步执行，NESTED嵌套执行
+    abstract CompletableFuture<?> tryFire(int mode);
+    abstract boolean isLive();
+
+    // 兼容普通线程池执行
+    public final void run() { tryFire(ASYNC); }
+
+    // 兼容ForkJoinPool执行
+    public final boolean exec() { tryFire(ASYNC); return true; }
+
+    public final Void getRawResult() { return null; }
+    public final void setRawResult(Void v) {}
+}
+```
+
 ### AQS
 
-![juc.png](juc.png)
+![juc.png](../images/juc.png)
 
 ### 并发容器
 
-![](blockingQueue.png)
+![](../images/blockingQueue.png)
