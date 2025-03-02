@@ -214,7 +214,7 @@ trait FourLegged extends HasLegs
 class Cat extends Animal,Furry,FourLegged
 ```
 
-![Cat的继承关系和线性化.png](Cat的继承关系和线性化.png)
+![Cat的继承关系和线性化.png](../images/Cat的继承关系和线性化.png)
 
 特质的线性化是这么来的：
 1. Animal必须包含，而Animal的父类是AnyRef和Any，故而
