@@ -21,7 +21,7 @@
 在随机森林中，可以通过设置参数（如oob_score=True）来启用袋外误差的计算。这种方法不仅可以节省数据划分的步骤，还能提供一个快速且有效的模型性能评估指标。
 
 
-![方差-偏差理论.png](方差-偏差理论.png)
+![方差-偏差理论.png](../images/方差-偏差理论.png)
 
 
 Class that can be used to bootstrap and launch a Spring application from a Java main method. By default class will perform the following steps to bootstrap your application:
@@ -66,7 +66,7 @@ Boosting PK Bagging
 | 单个评估器的效力比较弱的时候 | 可能失效                                         | 大概率会提升模型表现                                         |
 | 代表算法           | 随机森林                                         | 梯度提升树，Adaboost                                     |
 
-![bagging_boosting.png](bagging_boosting.png)
+![bagging_boosting.png](../images/bagging_boosting.png)
 
 - Bagging不同算法之间的核心区别在于靠以不同方式实现“独立性”（随机性），**那Boosting的不同算法之间的核心区别就在于上一个弱评估器的评估结果具体如何影响下一个弱评估器的建立过程**
 
@@ -141,7 +141,7 @@ AdaBoost的构筑过程非常简单：**首先，在全样本上建立一棵决�
 
   信息熵是对信息量多少的度量，信息熵越高，表示信息量越丰富、不确定性越大。
 
-  ![新词样例.png](新词样例.png)
+  ![新词样例.png](../images/新词样例.png)
 
   “副总裁”左右熵都高，可以成词, “人工智”右熵低，不能成词
 
@@ -205,7 +205,7 @@ $$
 
 具体流程如下：
 
-![多头注意力.png](多头注意力.png)
+![多头注意力.png](../images/多头注意力.png)
 
 ### Encoder
 
@@ -213,11 +213,11 @@ Positional Encoding: self attention的时候，加上位置的资讯
 
 [//]: # (<img src="https://skojiangdoc.oss-cn-beijing.aliyuncs.com/2023DL/transformer/image-1.png" alt="描述文字" width="400">)
 
-![encoder.png](encoder.png)
+![encoder.png](../images/encoder.png)
 
 Positional Encoding: self attention的时候，加上位置的资讯
 
-![block输出.png](block输出.png)
+![block输出.png](../images/block输出.png)
 
 ### Decoder
 
@@ -231,10 +231,10 @@ self-attention -> Masked Self-attention
 
 why masked? 因为token是一个个产生的，从左到右
 
-![transformer.png](transformer.png)
+![transformer.png](../images/transformer.png)
 
 #### cross attention
 
-![cross_attention.png](cross_attention.png)
+![cross_attention.png](../images/cross_attention.png)
 
 q来自于Decoder，K,V来自于Encoder
