@@ -86,8 +86,6 @@ public MembershipAction(...) {
 ```
 ## 选举流程
 
-多路复用器的引入
-
 1. 加入master节点的流程是什么？
 2. 如果本节点被选为master，接下去做什么
 3. 普通节点如何监控master健康状态
@@ -96,8 +94,28 @@ public MembershipAction(...) {
 
 ES 7.0之前默认用的是内置的ZenDiscovery，在Node.java中启动
 ```Java
-discovery.start(); // start before cluster service so that it can set initial state on ClusterApplierService
+// start before cluster service so that it can set initial state on ClusterApplierService
+discovery.start(); 
 discovery.startInitialJoin(); // 选主
+```
+
+ZenDiscovery核心属性:
+```Text
+TransportService: 通信服务
+ZenPing：UnicastZenPing，Ping工具
+MasterFaultDetection: Node监控Master节点状态服务
+JoinThreadControl: 加入集群线程控制器
+NodeJoinController: 被选中节点，控制普通节点连接的逻辑
+ClusterApplier: 集群状态“应用”服务
+ThreadPool: es封装的线程池，以后课程分析
+
+MasterService: 主节点服务
+publishClusterState: 发布集群状态服务
+NodesFaultDetection: Master监控普通节点状态服务
+MembershipAction: 处理成员请求事件
+PendingClusterStatesQueue: 集群状态Pending队列
+AtomicReference<ClusterState> committedState: 最后一次提交的状态
+ElectMasterService: 选举主节点服务
 ```
 
 discovery.start()调用，只是初始化一些默认值
@@ -133,7 +151,7 @@ protected void doStart() {
 
         // joinThreadControl：该Control用于当前节点控制joinThread，避免本地同时有多个joinThread去工作。确保
         // 在需要joinThread工作的时候，仅仅只有一个该线程。内部封装了启动 joinThread 的逻辑。
-        // 这一步的start()仅仅是设置running开关为true，并不会启动线程。
+        // start()仅仅是设置running开关为true，并不会启动线程。
         joinThreadControl.start();
     }
     zenPing.start();
@@ -142,11 +160,23 @@ protected void doStart() {
 
 discovery.startInitialJoin()则是启动一个异步任务，放到generic线程池中
 
-找不到不停地循环，如果选举失败，node会开启一个新的joinThread去顶替当前线程的工作
+找不到则不停地循环，如果选举失败，node会开启一个新的joinThread去顶替当前线程的工作
 ```Java
  while (masterNode == null && joinThreadControl.joinThreadActive(currentThread)) {
     masterNode = findMaster();
 }
+```
+
+选举失败的流程在innerJoinCluster方法的最后, 将joinThreadControl->currentJoinThread字段设置为null, 
+让zenDiscovery->executePool重新提交runnable任务，会再次开启一个新线程去做join的事情. 最终形成了一个闭环
+```Java
+  synchronized (stateMutex) {
+    if (success) {
+        ......
+    } else {
+        // failed to join. Try again...
+        joinThreadControl.markThreadAsDoneAndStartNew(currentThread);
+    }
 ```
 
 findMaster会向discovery.zen.ping.unicast.hosts配置项的节点发送ping请求，并且线程等待对端响应，返回的是PingResponse对象，包含对端节点和集群的信息

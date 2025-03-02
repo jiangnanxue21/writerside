@@ -804,6 +804,11 @@ output: 1, 2, 3, 4
 
 ![completablefuture逻辑.png](../images/completablefuture逻辑.png)
 
+**为什么要采取上面这种结构？completion的出现到底是为了什么？**
+
+线程池接纳的必须是runnable future。而completeFuture呢？联合forkJoin使用。forkJoin池只接收forkJoinTask
+
+
 为什么不直接把runnable放到asyncPool，没有结果，需要包装
 
 ```Java
@@ -893,15 +898,39 @@ private CompletableFuture<Void> uniRunStage(Executor e, Runnable f) {
     // 新的stage
     CompletableFuture<Void> d = new CompletableFuture<Void>();
     // 如果e不等于空，也即线程池不为空，那么表明需要异步执行，这时包装UniRun中
+    // d是新的CompletableFuture, this是d依赖的上个stage
     if (e != null || !d.uniRun(this, f, null)) {
         UniRun<T> c = new UniRun<T>(e, d, this, f);
-        // 将其压入当前CompletableFuture Completion栈中
+        // 如果上一个stage没有完成，则将其压入当前CompletableFuture Completion栈中
         this.push(c);
         // 由于压入可能失败，这是由于当前CompletableFuture已经执行完成了，那么需要补救一下
         c.tryFire(SYNC);
     }
     return d;
 }
+
+ final boolean uniRun(CompletableFuture<?> a, Runnable f, UniRun<?> c) {
+     Object r; Throwable x;
+     // (r = a.result) == null : 看下上个stage有没有完成
+     if (a == null || (r = a.result) == null || f == null)
+         return false;
+     // 判断当前的stage的result是不是等于null
+     if (result == null) {
+         if (r instanceof AltResult && (x = ((AltResult)r).ex) != null)
+             completeThrowable(x, r);
+         else
+             try {
+                 if (c != null && !c.claim())
+                     return false;
+                 // 直接执行f，完成当前stage
+                 f.run();
+                 completeNull();
+             } catch (Throwable ex) {
+                 completeThrowable(ex);
+             }
+     }
+     return true;
+ }
 ```
 
 ```Java
@@ -941,6 +970,42 @@ final boolean uniRun(CompletableFuture<?> a, Runnable f, UniRun<?> c) {
     return true;
 }
 ```
+
+上述代码是异步执行不保证顺序的原因所在
+
+接下去分析下 
+```Java
+static final class UniRun<T> extends UniCompletion<T,Void> {
+```
+
+Completion模板类
+
+由于completion需要放入普通线程池和forkJoin线程池都必须兼容。所以我们必须让它继承自ForkJoinTask，并且也实现runnable
+```Java
+abstract static class Completion extends ForkJoinTask<Void>
+   implements Runnable, AsynchronousCompletionTask {
+    volatile Completion next;  // 指向栈中下一个Completion
+
+    // 执行动作并返回所需要传播执行完成的stage，SYNC同步执行，ASYNC异步执行，NESTED嵌套执行
+    abstract CompletableFuture<?> tryFire(int mode);
+    
+    // 
+    abstract boolean isLive();
+
+    // 兼容普通线程池执行
+    public final void run() { tryFire(ASYNC); }
+
+    // 兼容ForkJoinPool执行
+    public final boolean exec() { tryFire(ASYNC); return true; }
+
+    public final Void getRawResult() { return null; }
+    public final void setRawResult(Void v) {}
+}
+```
+
+UniCompletion模板类
+
+Uni指的是单个
 ```Java
 abstract static class UniCompletion<T, V> extends Completion {
     Executor executor;       // 执行使用的线程池
@@ -968,24 +1033,39 @@ abstract static class UniCompletion<T, V> extends Completion {
 ```
 
 ```Java
-abstract static class Completion extends ForkJoinTask<Void>
-implements Runnable, AsynchronousCompletionTask {
-    volatile Completion next;  // 指向栈中下一个Completion
+ static final class UniRun<T> extends UniCompletion<T,Void> {
+     Runnable fn;
+     UniRun(Executor executor, CompletableFuture<Void> dep,
+            CompletableFuture<T> src, Runnable fn) {
+         super(executor, dep, src); this.fn = fn;
+     }
+     
+     // 依赖的stage完成之后回调
+     final CompletableFuture<Void> tryFire(int mode) {
+         CompletableFuture<Void> d; CompletableFuture<T> a;
+         if ((d = dep) == null ||
+             !d.uniRun(a = src, fn, mode > 0 ? null : this))
+             return null;
+         dep = null; src = null; fn = null;
+         return d.postFire(a, mode);
+     }
+ }
 
-    // 执行动作并返回所需要传播执行完成的stage，SYNC同步执行，ASYNC异步执行，NESTED嵌套执行
-    abstract CompletableFuture<?> tryFire(int mode);
-    abstract boolean isLive();
-
-    // 兼容普通线程池执行
-    public final void run() { tryFire(ASYNC); }
-
-    // 兼容ForkJoinPool执行
-    public final boolean exec() { tryFire(ASYNC); return true; }
-
-    public final Void getRawResult() { return null; }
-    public final void setRawResult(Void v) {}
-}
 ```
+
+**阶段总结：**
+
+第一句是异步执行的，并返回一个 CompletableFuture。第二句当调用thenRun的时候，会生成一个UniRun的Completion对象，并将其压入到CompletableFuture的执行栈中。
+此时，当前的动作还没有执行完成，Completion对象会被压入到CompletableFuture的执行队列中，随后其他的Completion对象也会依次压入。
+当这个方法执行完成之后，也就是asyncRun方法执行完成之后，会触发postComplete回调。postComplete会遍历已经压入的Completion对象，并回调它们的tryFire方法。
+这样，这些Completion对象就可以被执行了。这相当于各个阶段（stage）之间的依赖是用什么来绑定在一起的呢？是使用stage加上Completion对象来实现的
+```Java
+CompletableFuture<Void>  completableFuture = CompletableFuture.runAsync(() -> {
+   System.out.println();
+});
+completableFuture.thenRun(() -> System.out.println(1));
+```
+
 
 ### AQS
 

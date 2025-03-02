@@ -4,7 +4,7 @@
 
 app不能直接访问cpu网卡和硬盘，要通过kernel系统调用，修改PageCache之后标记为脏，可以通过调优参数，什么时候flush到磁盘。
 
-![](pagecache.jpg)
+![](../images/pagecache.jpg)
 
 | 参数                           | 含义                                                                                                      |
 |------------------------------|---------------------------------------------------------------------------------------------------------|
@@ -23,7 +23,7 @@ DMA 控制器（DMA Controller，简称 DMAC）。这块芯片，我们可以认
 DMAC 其实也是一个特殊的 I/O 设备，它和 CPU 以及其他 I/O
 设备一样，通过连接到总线来进行实际的数据传输。总线上的设备呢，其实有两种类型。一种我们称之为主设备（Master），另外一种，我们称之为从设备（Slave）。
 
-![](DMA.png)
+![](../images/DMA.png)
 
 数据传输的流程如下：
 
@@ -94,19 +94,31 @@ Netty特性:
 hbase面试题
 https://baijiahao.baidu.com/s?id=1719816304849626834&wfr=spider&for=pc
 
-## 4. Producer
+## 4. 生产者
 
+生产者客户端的整体架构，如下所示：
+
+![procuder.png](../images/procuder.png)
+
+从以下几个方面来看它的实现：
 1. 生产者消息分区机制
 2. meta更新策略
+3. RecordAccumulator的实现，即内存管理和分配
 
-![client元数据更新.png](client元数据更新.png)
+![RecodeAccumulator.png](../images/RecodeAccumulator.png)
+
+
+
+4. NIO模型
+
+![client元数据更新.png](../images/client元数据更新.png)
 
 
 3. 如何和broker建立连接
 
 wakeup()方法用于唤醒在select()或select(long)方法调用中被阻塞的线程。当selector上的channel无就绪事件时，如果想要唤醒阻塞在select()操作上的线程去处理一些别的工作，可以调用wakeup()方法
 
-![wakeup.png](wakeup.png)
+![wakeup.png](../images/wakeup.png)
 
 多路复用器获取的是**事件**而不是读取数据
 
@@ -289,5 +301,3 @@ take方法的实现
      }
  }
 ```
-
-
